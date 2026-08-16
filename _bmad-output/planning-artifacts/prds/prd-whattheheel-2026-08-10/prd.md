@@ -1,8 +1,8 @@
 ---
 title: 'What the Heel: The AI Shoe Stylist'
-status: 'draft'
+status: 'final'
 created: '2026-08-10'
-updated: '2026-08-16'
+updated: '2026-08-17'
 ---
 
 # PRD: What the Heel - The AI Shoe Stylist
