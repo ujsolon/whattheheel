@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>What the Heel — Direction 4: Playful Pun</title>
+<style>
+/*
+  COLOR TOKENS — Direction 4: Playful / Cheeky ("What the Heel" pun-forward)
+  --cream:     #FFF8ED   (background)
+  --pink:      #FF6FA5   (primary accent)
+  --sky:       #5EC9F5   (secondary accent)
+  --sun:       #FFD23F   (tertiary accent, highlight)
+  --grape:     #8B5CF6   (quaternary accent)
+  --ink:       #2B2140   (text, deep plum-black)
+*/
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 34px 16px 72px;
+  background: #F4EEE3;
+  font-family: Tahoma, Verdana, 'Segoe UI', sans-serif;
+  color: #2B2140;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+.rationale {
+  max-width: 700px;
+  background: #FFF8ED;
+  border: 3px dashed #8B5CF6;
+  border-radius: 22px;
+  padding: 16px 20px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #4A3F63;
+}
+.rationale b { color: #FF6FA5; }
+.frames { display: flex; flex-wrap: wrap; gap: 26px; justify-content: center; align-items: flex-start; }
+.phone {
+  width: 340px;
+  border: 5px solid #2B2140;
+  border-radius: 42px;
+  background: #FFF8ED;
+  box-shadow: 0 14px 0 -4px rgba(43,33,64,.15);
+  overflow: hidden;
+}
+.screen { min-height: 660px; background: #FFF8ED; }
+
+/* ---------- HERO: TRENDSETTER FEED ---------- */
+.statusbar { height: 20px; background:#FFF8ED; }
+.topbar {
+  padding: 14px 18px 16px;
+  background: linear-gradient(100deg,#FF6FA5,#FFD23F);
+  border-radius: 0 0 26px 26px;
+  text-align: center;
+}
+.wordmark { font-size: 24px; font-weight: 800; color: #2B2140; }
+.wordmark .heel { display:inline-block; transform: rotate(-6deg); color:#FFF8ED; -webkit-text-stroke: 1.5px #2B2140; }
+.sub { margin-top: 4px; font-size: 11px; font-weight: 700; color: #2B2140; }
+.sub::before { content: "👠 "; }
+
+.feedintro { padding: 16px 18px 6px; font-size: 13px; font-weight: 700; }
+.feedintro .accent { color:#8B5CF6; }
+
+.feedgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 8px 16px 10px; }
+.card {
+  background: #FFFFFF;
+  border: 3px solid #2B2140;
+  border-radius: 20px;
+  position: relative;
+  padding-bottom: 4px;
+}
+.imgph {
+  height: 120px;
+  margin: 8px;
+  border-radius: 14px;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  font-size: 9.5px; font-weight: 700; padding: 6px; color:#2B2140;
+}
+.imgph.g1 { background: #FFD8E7; }
+.imgph.g2 { background: #D6EEFC; }
+.imgph.g3 { background: #FFF0B8; }
+.imgph.g4 { background: #E4D7FC; }
+.bubble {
+  position: absolute; top: -8px; right: -6px;
+  background: #FF6FA5; color:#fff; font-size: 9px; font-weight: 800;
+  border: 2px solid #2B2140; border-radius: 999px; padding: 3px 8px;
+  transform: rotate(8deg);
+}
+.clabel { padding: 0 12px 12px; }
+.cname { font-weight: 800; font-size: 13px; }
+.cquip { font-size: 10px; color:#8B5CF6; font-weight: 700; margin-top: 2px; }
+
+.card.selected { border-color:#FF6FA5; box-shadow: 0 0 0 3px #FFD23F; }
+.card.selected .bubble { background:#8B5CF6; }
+
+.card.loading .imgph { background: repeating-linear-gradient(45deg,#F1ECE0,#F1ECE0 8px,#E8E1D2 8px,#E8E1D2 16px); }
+.card.loading .cname, .card.loading .cquip { background:#F1ECE0; color:transparent; border-radius:4px; }
+
+.cta-band {
+  margin: 6px 16px 20px; padding: 14px 0; text-align: center; border-radius: 999px;
+  background: #2B2140; color: #FFD23F; font-weight: 800; font-size: 13px;
+}
+
+/* ---------- SECONDARY: VTO RESULT ---------- */
+.vtop { padding: 16px 18px 4px; text-align:center; }
+.vtop h2 { font-size: 18px; font-weight: 800; margin: 0; }
+.vtop .quip { font-size: 11px; color:#8B5CF6; font-weight: 700; margin-top: 3px; }
+.vphoto {
+  margin: 14px 16px 0; height: 300px; border-radius: 24px;
+  background: linear-gradient(150deg,#FFD8E7,#D6EEFC 55%,#E4D7FC);
+  border: 3px solid #2B2140;
+  display:flex; align-items:center; justify-content:center; text-align:center; padding:16px;
+  font-size: 11px; font-weight: 700; position: relative;
+}
+.confetti { position:absolute; font-size:16px; }
+.c1{top:8px;left:14px;} .c2{top:16px;right:18px; transform:rotate(20deg);} .c3{bottom:14px;left:22px; transform:rotate(-15deg);} .c4{bottom:20px;right:14px;}
+.vmeta { display:flex; justify-content:space-between; margin: 14px 16px 0; align-items:center; }
+.vmeta h3 { font-size: 15px; font-weight: 800; margin:0; }
+.vmeta .price { font-size: 15px; font-weight: 800; color:#FF6FA5; }
+.buynow {
+  margin: 14px 16px 22px; padding: 16px 0; text-align:center; border-radius: 999px;
+  background: linear-gradient(100deg,#FF6FA5,#8B5CF6); color:#fff;
+  font-weight: 800; font-size: 14px; border: 3px solid #2B2140;
+}
+</style>
+</head>
+<body>
+
+<div class="rationale">
+  <b>DIRECTION 4 — PLAYFUL / CHEEKY (PUN-FORWARD).</b> Rounded blob cards, hand-tilted stickers, and copy that leans hard into the "What the Heel" name (quips, wordplay, confetti) make the feed feel like a friend's fun recommendation rather than a store. Implied motion: cards wiggle/bounce gently into place on load, stickers do a little spin on tap, and the try-on result screen pops confetti around the shoe when the render completes. Best for: judges who respond to personality and memorability — this is the direction most likely to get a laugh and stick in memory.
+</div>
+
+<div class="frames">
+
+  <div class="phone">
+    <div class="screen">
+      <div class="statusbar"></div>
+      <div class="topbar">
+        <div class="wordmark">What the <span class="heel">Heel</span>?!</div>
+        <div class="sub">today's sole mates</div>
+      </div>
+
+      <div class="feedintro">Scroll if you <span class="accent">dare</span>. Your feet won't recover.</div>
+
+      <div class="feedgrid">
+        <div class="card selected">
+          <div class="bubble">yaas</div>
+          <div class="imgph g1">pic: Chunky Loafer, big & bold</div>
+          <div class="clabel">
+            <div class="cname">Chunky Loafer</div>
+            <div class="cquip">stomp, don't walk</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="bubble">🔥 hot</div>
+          <div class="imgph g2">pic: Y2K Platform Boot</div>
+          <div class="clabel">
+            <div class="cname">Y2K Platform</div>
+            <div class="cquip">2004 called, it's obsessed</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="bubble">new!</div>
+          <div class="imgph g4">pic: Sculptural Heel Mule</div>
+          <div class="clabel">
+            <div class="cname">Sculptural Mule</div>
+            <div class="cquip">art, but wearable</div>
+          </div>
+        </div>
+        <div class="card loading">
+          <div class="imgph"></div>
+          <div class="clabel">
+            <div class="cname">finding your fit...</div>
+            <div class="cquip">&nbsp;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cta-band">See What Fits You Best →</div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="screen">
+      <div class="vtop">
+        <h2>Well, Heel-o There! 👋</h2>
+        <div class="quip">the shoe fits. literally.</div>
+      </div>
+      <div class="vphoto">
+        <span class="confetti c1">🎉</span><span class="confetti c2">✨</span><span class="confetti c3">👟</span><span class="confetti c4">🎊</span>
+        pic: AI try-on render — user's foot wearing the Chunky Loafer
+      </div>
+      <div class="vmeta">
+        <h3>Chunky Loafer</h3>
+        <div class="price">$128</div>
+      </div>
+      <div class="buynow">Heel Yes — Buy Now</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>What the Heel — Direction 1: Bold Streetwear</title>
+<style>
+/*
+  COLOR TOKENS — Direction 1: Bold Maximalist / Gen-Z Streetwear
+  --lime:      #D4FF3F   (primary accent, "hot" tags, CTA glow)
+  --pink:      #FF3EC9   (secondary accent, badges)
+  --purple:    #7B2FF7   (tertiary accent, gradients)
+  --ink:       #0A0A0A   (background, near-black)
+  --paper:     #FFFFFF   (card surfaces, text on ink)
+  --orange:    #FF7A1A   (fire/trending marker)
+*/
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 32px 16px 64px;
+  background: #EDEDED;
+  font-family: 'Arial Black', Arial, 'Helvetica Neue', sans-serif;
+  color: #0A0A0A;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+.rationale {
+  max-width: 720px;
+  background: #0A0A0A;
+  color: #D4FF3F;
+  padding: 18px 22px;
+  border: 4px solid #0A0A0A;
+  font-family: Arial, 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  transform: rotate(-0.4deg);
+  box-shadow: 8px 8px 0 #FF3EC9;
+}
+.rationale b { color: #FFFFFF; }
+.frames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px;
+  justify-content: center;
+  align-items: flex-start;
+}
+.phone {
+  width: 340px;
+  border: 6px solid #0A0A0A;
+  border-radius: 34px;
+  background: #0A0A0A;
+  box-shadow: 10px 10px 0 #7B2FF7;
+  overflow: hidden;
+}
+.screen { background: #0A0A0A; min-height: 640px; position: relative; }
+
+/* ---------- HERO: TRENDSETTER FEED ---------- */
+.statusbar { height: 22px; background:#0A0A0A; }
+.topbar {
+  padding: 10px 14px 6px;
+  background: linear-gradient(120deg, #7B2FF7, #FF3EC9 60%, #FF7A1A);
+}
+.wordmark {
+  font-size: 26px;
+  color: #FFFFFF;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+  line-height: 1;
+  transform: skewX(-6deg);
+}
+.wordmark span { color: #D4FF3F; }
+.tagline {
+  margin-top: 4px;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #0A0A0A;
+  background: #D4FF3F;
+  display: inline-block;
+  padding: 3px 8px;
+  transform: rotate(-2deg);
+}
+.marquee {
+  background: #0A0A0A;
+  color: #D4FF3F;
+  font-family: Arial, sans-serif;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 6px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  border-top: 2px solid #D4FF3F;
+  border-bottom: 2px solid #D4FF3F;
+}
+.marquee span { padding: 0 14px; }
+.feedgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  background: #151515;
+}
+.card {
+  background: #FFFFFF;
+  border: 3px solid #0A0A0A;
+  position: relative;
+  box-shadow: 4px 4px 0 #0A0A0A;
+}
+.card.tall { grid-row: span 2; }
+.imgph {
+  height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Arial, sans-serif;
+  font-weight: 800;
+  font-size: 10px;
+  color: rgba(0,0,0,.55);
+  text-align: center;
+  padding: 6px;
+  letter-spacing: .5px;
+}
+.card.tall .imgph { height: 200px; }
+.imgph.g1 { background: linear-gradient(135deg,#FF3EC9,#7B2FF7); color:#fff; }
+.imgph.g2 { background: linear-gradient(135deg,#D4FF3F,#00D1B2); }
+.imgph.g3 { background: linear-gradient(135deg,#FF7A1A,#FFD23F); }
+.imgph.g4 { background: linear-gradient(135deg,#7B2FF7,#3E6BFF); color:#fff; }
+.badge {
+  position: absolute; top: 6px; left: 6px;
+  background: #D4FF3F; color:#0A0A0A;
+  font-family: Arial, sans-serif; font-weight: 900;
+  font-size: 9px; padding: 2px 6px;
+  transform: rotate(-4deg);
+  border: 2px solid #0A0A0A;
+}
+.badge.fire { left:auto; right:6px; background:#FF7A1A; color:#fff; }
+.clabel {
+  padding: 7px 8px 9px;
+  font-family: Arial, sans-serif;
+}
+.cname { font-weight: 900; font-size: 12.5px; text-transform: uppercase; line-height: 1.15; }
+.cmeta { font-size: 9.5px; color: #7B2FF7; font-weight: 800; margin-top: 2px; }
+.cta-row { display:flex; gap:8px; padding: 4px 10px 16px; background:#151515; }
+.pill {
+  flex: 1; text-align:center; padding: 11px 0;
+  font-family: Arial, sans-serif; font-weight: 900; font-size: 12px;
+  text-transform: uppercase; letter-spacing: .5px; border: 3px solid #0A0A0A;
+}
+.pill.on { background:#D4FF3F; color:#0A0A0A; box-shadow: 3px 3px 0 #FF3EC9; }
+.pill.off { background:#0A0A0A; color:#D4FF3F; }
+
+/* state variant: card selected/tapped */
+.card.selected {
+  outline: 4px solid #D4FF3F;
+  outline-offset: -3px;
+  box-shadow: 4px 4px 0 #D4FF3F;
+}
+.card.selected::after {
+  content: "SELECTED ✓";
+  position: absolute; bottom: 0; left:0; right:0;
+  background:#0A0A0A; color:#D4FF3F;
+  font-family: Arial, sans-serif; font-weight:900; font-size:9px;
+  text-align:center; padding: 3px 0; letter-spacing: 1px;
+}
+
+/* loading skeleton state card */
+.card.loading .imgph { background: repeating-linear-gradient(110deg,#e7e7e7 0 10px,#d2d2d2 10px 20px); color: transparent; }
+.card.loading .cname, .card.loading .cmeta { background:#e2e2e2; color:transparent; border-radius:3px; }
+
+/* ---------- SECONDARY: VTO RESULT ---------- */
+.vtowrap { background:#0A0A0A; padding: 14px 12px 20px; }
+.vtoheader { color:#fff; font-family:Arial,sans-serif; font-weight:900; font-size:13px; text-transform:uppercase; margin-bottom:8px; letter-spacing:.5px;}
+.vtoheader span{color:#D4FF3F;}
+.vtophoto {
+  height: 340px;
+  background: linear-gradient(160deg,#3E6BFF,#7B2FF7 55%,#FF3EC9);
+  border: 3px solid #D4FF3F;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-family:Arial,sans-serif; font-weight:800; font-size:12px; text-align:center; padding:14px;
+}
+.shoetag {
+  margin-top: 10px; display:flex; justify-content:space-between; align-items:center;
+  color:#fff; font-family:Arial,sans-serif;
+}
+.shoetag .name{font-weight:900; font-size:14px; text-transform:uppercase;}
+.shoetag .price{font-weight:900; font-size:14px; color:#D4FF3F;}
+.buynow {
+  margin-top: 12px; width:100%; padding: 15px 0; text-align:center;
+  background:#D4FF3F; color:#0A0A0A; border:3px solid #0A0A0A;
+  font-family:Arial,sans-serif; font-weight:900; font-size:15px; text-transform:uppercase;
+  letter-spacing:1px; box-shadow:5px 5px 0 #FF3EC9;
+}
+</style>
+</head>
+<body>
+
+<div class="rationale">
+  <b>DIRECTION 1 — BOLD MAXIMALIST / GEN-Z STREETWEAR.</b> Loud color-blocked gradients, tilted stickers, marquee ticker, and shouty all-caps type built for TikTok-native scrollers who want the feed to feel like a hype drop, not a catalog. Implied motion: cards jitter/tilt slightly on scroll snap, the ticker auto-scrolls, badges pulse, and tapping a card triggers a quick "sticker slap" bounce before opening the try-on. Best for: impressing judges who want maximum visual energy and a feed that reads as "trend-chasing" at a glance.
+</div>
+
+<div class="frames">
+
+  <div class="phone">
+    <div class="screen">
+      <div class="statusbar"></div>
+      <div class="topbar">
+        <div class="wordmark">What the <span>Heel</span>?!</div>
+        <div class="tagline">TRENDING RN 🔥</div>
+      </div>
+      <div class="marquee"><span>NEW DROPS DAILY ★ Y2K IS BACK ★ COP BEFORE IT'S GONE ★ NEW DROPS DAILY ★</span></div>
+
+      <div class="feedgrid">
+        <div class="card selected">
+          <div class="badge">HOT</div>
+          <div class="imgph g1">IMG: Chunky Platform Loafer — front angle</div>
+          <div class="clabel">
+            <div class="cname">Chunky Loafer</div>
+            <div class="cmeta">👟 worn by @itgirl.era</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="badge fire">🔥 2.3k</div>
+          <div class="imgph g2">IMG: Y2K Platform Boot</div>
+          <div class="clabel">
+            <div class="cname">Y2K Platform</div>
+            <div class="cmeta">runway → street</div>
+          </div>
+        </div>
+        <div class="card tall">
+          <div class="badge">NEW</div>
+          <div class="imgph g4">IMG: Sculptural Heeled Mule, side profile</div>
+          <div class="clabel">
+            <div class="cname">Sculptural Mule</div>
+            <div class="cmeta">as seen on FROW</div>
+          </div>
+        </div>
+        <div class="card loading">
+          <div class="imgph"></div>
+          <div class="clabel">
+            <div class="cname">&nbsp;</div>
+            <div class="cmeta">&nbsp;</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="badge fire">🔥 5.1k</div>
+          <div class="imgph g3">IMG: Neon Sneaker Boot</div>
+          <div class="clabel">
+            <div class="cname">Neon Sneaker Boot</div>
+            <div class="cmeta">certified viral</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <div class="pill off">Feed</div>
+        <div class="pill on">Try It On</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="screen">
+      <div class="statusbar"></div>
+      <div class="topbar">
+        <div class="wordmark">You. <span>Heeled.</span></div>
+        <div class="tagline">AI TRY-ON RESULT</div>
+      </div>
+      <div class="vtowrap">
+        <div class="vtoheader">This is giving <span>main character</span> energy</div>
+        <div class="vtophoto">IMG: AI-rendered photo — user's foot wearing the Chunky Platform Loafer, realistic lighting match</div>
+        <div class="shoetag">
+          <div class="name">Chunky Loafer</div>
+          <div class="price">$128</div>
+        </div>
+        <div class="buynow">Heel Yes — Buy Now →</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

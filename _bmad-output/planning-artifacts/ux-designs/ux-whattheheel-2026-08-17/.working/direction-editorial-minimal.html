@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>What the Heel — Direction 2: Editorial Minimal</title>
+<style>
+/*
+  COLOR TOKENS — Direction 2: Quiet Editorial / Fashion-Magazine Minimalism
+  --paper:     #F7F5F1   (page background, warm off-white)
+  --ink:       #1C1B19   (primary text, near-black)
+  --taupe:     #B8AFA3   (hairlines, secondary text)
+  --card:      #FFFFFF   (card surface)
+  --rust:      #C17A56   (single restrained accent — links, small marks)
+  --mist:      #E7E2DA   (placeholder image fill, subtle)
+*/
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 40px 16px 72px;
+  background: #EAE7E1;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #1C1B19;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+.rationale {
+  max-width: 700px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #4A453F;
+  border-top: 1px solid #1C1B19;
+  border-bottom: 1px solid #1C1B19;
+  padding: 14px 4px;
+}
+.rationale b { color: #1C1B19; letter-spacing: .5px; }
+.frames { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start; }
+.phone {
+  width: 340px;
+  border: 1px solid #1C1B19;
+  background: #F7F5F1;
+}
+.screen { min-height: 660px; }
+
+/* ---------- HERO: TRENDSETTER FEED ---------- */
+.masthead { padding: 22px 22px 10px; text-align: center; }
+.eyebrow {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 9.5px; letter-spacing: 3.5px; text-transform: uppercase; color: #B8AFA3;
+}
+.wordmark {
+  font-size: 30px; letter-spacing: 1px; margin-top: 6px; font-weight: 400;
+}
+.wordmark em { font-style: italic; color: #C17A56; }
+.hr { height: 1px; background: #1C1B19; margin: 16px 22px 0; }
+.issueline {
+  display: flex; justify-content: space-between; padding: 8px 22px 18px;
+  font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5px; letter-spacing: 1.5px;
+  color: #B8AFA3; text-transform: uppercase;
+}
+
+.feature {
+  padding: 0 22px 26px;
+}
+.feature .imgph {
+  height: 260px;
+  background: #E7E2DA;
+  display: flex; align-items: flex-end; justify-content: flex-start;
+  font-family: 'Segoe UI', Arial, sans-serif; font-size: 10.5px; color: #8A8377;
+  padding: 10px;
+}
+.feature .cap {
+  margin-top: 12px;
+  font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: #C17A56;
+}
+.feature h2 { font-size: 22px; font-weight: 400; margin: 4px 0 6px; line-height: 1.2; }
+.feature p { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #6B6459; line-height: 1.6; margin: 0; }
+
+.listgrid { padding: 0 22px 22px; }
+.row {
+  display: grid; grid-template-columns: 84px 1fr; gap: 14px;
+  padding: 16px 0; border-top: 1px solid #DAD4C9; align-items: center;
+}
+.row .imgph {
+  height: 84px; background: #E7E2DA;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  font-family:'Segoe UI',Arial,sans-serif; font-size: 8px; color:#8A8377; padding: 4px;
+}
+.row .info .idx { font-family:'Segoe UI',Arial,sans-serif; font-size: 9.5px; color:#B8AFA3; letter-spacing: 1px; }
+.row .info h3 { font-size: 16px; font-weight: 400; margin: 2px 0 3px; }
+.row .info .designer { font-family:'Segoe UI',Arial,sans-serif; font-size: 11px; color:#6B6459; font-style: italic; }
+
+.row.selected { background:#FFFFFF; margin: 0 -10px; padding: 16px 10px; border-top-color:#1C1B19; }
+.row.selected .info h3::after { content: " ·"; color:#C17A56; }
+
+.row.loading .imgph { background: linear-gradient(90deg,#E7E2DA,#EFEBE4,#E7E2DA); color:transparent; }
+.row.loading h3, .row.loading .designer, .row.loading .idx { background:#E7E2DA; color:transparent; border-radius:2px; }
+
+.footlink {
+  margin: 4px 22px 24px; padding-top: 14px; border-top: 1px solid #1C1B19;
+  font-family:'Segoe UI',Arial,sans-serif; font-size: 11px; letter-spacing: 1.5px;
+  text-transform: uppercase; text-align:center; color:#1C1B19;
+}
+
+/* ---------- SECONDARY: VTO RESULT ---------- */
+.vhead { padding: 22px 22px 4px; text-align:center; }
+.vhead .eyebrow { color:#B8AFA3; }
+.vhead h2 { font-size: 22px; font-weight: 400; margin: 6px 0 0; }
+.vphoto {
+  margin: 18px 22px 0; height: 340px; background: #E7E2DA;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  font-family:'Segoe UI',Arial,sans-serif; font-size: 11px; color:#8A8377; padding: 16px;
+  border: 1px solid #1C1B19;
+}
+.vmeta { display:flex; justify-content:space-between; align-items:baseline; margin: 14px 22px 0; }
+.vmeta h3 { font-size: 17px; font-weight: 400; margin:0; }
+.vmeta .price { font-family:'Segoe UI',Arial,sans-serif; font-size: 13px; color:#C17A56; }
+.vbuy {
+  margin: 18px 22px 26px; padding: 15px 0; text-align:center;
+  border: 1px solid #1C1B19; font-family:'Segoe UI',Arial,sans-serif;
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<div class="rationale">
+  <b>DIRECTION 2 — QUIET EDITORIAL / FASHION-MAGAZINE MINIMALISM.</b> A single hero feature image, generous negative space, hairline rules, and an italic serif voice modelled on print fashion editorials — the feed reads as a curated "issue" rather than an infinite scroll. Implied motion: slow cross-fades between feature images, a gentle parallax as the reader scrolls past the hero, no bounce or bright flashes. Best for: signalling taste and restraint to judges who value design maturity over noise.
+</div>
+
+<div class="frames">
+
+  <div class="phone">
+    <div class="screen">
+      <div class="masthead">
+        <div class="eyebrow">The Trendsetter Feed</div>
+        <div class="wordmark">What the <em>Heel</em></div>
+      </div>
+      <div class="hr"></div>
+      <div class="issueline"><span>No. 14 — August</span><span>Curated Daily</span></div>
+
+      <div class="feature">
+        <div class="imgph">Photograph — sculptural mule, studio light</div>
+        <div class="cap">This Week's Cover Shoe</div>
+        <h2>The Sculptural Mule, Reconsidered</h2>
+        <p>An architectural heel is quietly having a moment on every front row. Here is why it belongs on you.</p>
+      </div>
+
+      <div class="listgrid">
+        <div class="row selected">
+          <div class="imgph">Loafer, front</div>
+          <div class="info">
+            <div class="idx">01 — Footwear</div>
+            <h3>The Chunky Loafer</h3>
+            <div class="designer">as styled by the runway desk</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="imgph">Boot, angle</div>
+          <div class="info">
+            <div class="idx">02 — Footwear</div>
+            <h3>The Y2K Platform</h3>
+            <div class="designer">a revival, done properly</div>
+          </div>
+        </div>
+        <div class="row loading">
+          <div class="imgph"></div>
+          <div class="info">
+            <div class="idx">03</div>
+            <h3>Loading</h3>
+            <div class="designer">please wait</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footlink">View the Full Issue →</div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="screen">
+      <div class="vhead">
+        <div class="eyebrow">Your Try-On</div>
+        <h2>The Chunky Loafer, on You</h2>
+      </div>
+      <div class="vphoto">Photograph — AI-rendered composite, user's foot in the Chunky Loafer, matched studio lighting</div>
+      <div class="vmeta">
+        <h3>Chunky Loafer</h3>
+        <div class="price">$128</div>
+      </div>
+      <div class="vbuy">Shop the Look</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

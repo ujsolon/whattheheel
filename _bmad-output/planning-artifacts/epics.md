@@ -3,13 +3,15 @@ stepsCompleted: [1, "requirements-confirmed", 2, "epics-approved", 3, "stories-g
 inputDocuments:
   - '_bmad-output/planning-artifacts/prds/prd-whattheheel-2026-08-10/prd.md'
   - '_bmad-output/planning-artifacts/architecture/architecture-whattheheel-2026-08-16/ARCHITECTURE-SPINE.md'
+  - '_bmad-output/planning-artifacts/ux-designs/ux-whattheheel-2026-08-17/DESIGN.md'
+  - '_bmad-output/planning-artifacts/ux-designs/ux-whattheheel-2026-08-17/EXPERIENCE.md'
 ---
 
 # What the Heel - Epic Breakdown
 
 ## Overview
 
-This document provides the complete epic and story breakdown for What the Heel, decomposing the requirements from the PRD and Architecture spine into implementable stories. No UX design contract exists for this project (skipped in favor of going straight to architecture).
+This document provides the complete epic and story breakdown for What the Heel, decomposing the requirements from the PRD, Architecture spine, and UX design contract (`DESIGN.md` + `EXPERIENCE.md` at `ux-designs/ux-whattheheel-2026-08-17/`) into implementable stories.
 
 ## Requirements Inventory
 
@@ -37,17 +39,17 @@ NFR6: Cost Management — each AI Shoes VTO call consumes 2 YouCam units; VTO ca
 - Layered paradigm (Route Handlers → Services → Data/External, one-way dependency) must be scaffolded as the base directory structure (`app/api/*`, `lib/services/*`, `lib/data/*`, `lib/external/*`) before feature stories build on it.
 - MongoDB Atlas M0 cluster provisioning + connection setup (separate `whattheheel_dev`/`whattheheel_prod` databases), `mongodb` npm driver 7.5.0, with `serverExternalPackages: ['mongodb']` configured in `next.config` to avoid Server Component bundling errors.
 - Cloudinary account/API setup (SDK 2.10.0) for selfie + shoe "worn" image storage — raw image bytes never go into MongoDB (architecture AD-4).
-- NextAuth v4.24.15 + `@next-auth/mongodb-adapter` 1.1.3 setup (install with `--legacy-peer-deps`), owning the `users` collection; app-specific profile fields (`selfieUrl`) go in a separate `user_profiles` collection (architecture AD-3, Consistency Conventions).
+- NextAuth v4.24.15 with `CredentialsProvider` (email + password) and `session: { strategy: 'jwt' }` — no database adapter; `bcryptjs` 3.0.3 for password hashing. The `users` collection is app-owned via `lib/data/users.ts`; app-specific profile fields (`selfieUrl`) go in a separate `user_profiles` collection (architecture AD-7, Consistency Conventions).
 - YouCam AI Shoes API integration (`/s2s/v2.0/task/shoes`) requires a Perfect Corp API key (Bearer auth), server-side only, task creation + polling via a single `vtoTask.ts` service and one `vto_tasks` collection (architecture AD-1, AD-2, AD-3).
 - Every API route must use the two fixed response envelopes: success `{ data: <payload> }`, failure `{ error: { code, message } }` (architecture Consistency Conventions).
 - Deployment to Vercel (git-push deploy); environment variables configured per-environment in Vercel Project Settings + local `.env.local`.
 - Testing convention: Jest + React Testing Library, co-located `__tests__`, `.test.tsx` naming, render-smoke test minimum for every new component (per `project-context.md`).
 
-**Known non-blocking gaps (architecture Deferred list — not required for this pass unless promoted):** retail link source (static JSON field vs. live API), NextAuth session strategy (JWT vs. DB sessions), rate limiting on `/api/vto-tasks`, CI/CD pipeline specifics, curated trend dataset spec conformance (manual curation, unchecked at runtime), polling UX copy, dev-environment YouCam billing exposure (no mock mode).
+**Known non-blocking gaps (architecture Deferred list — not required for this pass unless promoted):** retail link source (static JSON field vs. live API), rate limiting on `/api/vto-tasks`, CI/CD pipeline specifics, curated trend dataset spec conformance (manual curation, unchecked at runtime), dev-environment YouCam billing exposure (no mock mode). (NextAuth session strategy and polling UX copy are now resolved — see architecture AD-7 and `EXPERIENCE.md`'s Component Patterns, respectively.)
 
 ### UX Design Requirements
 
-N/A — no UX design contract exists for this project.
+A full UX design contract exists at `_bmad-output/planning-artifacts/ux-designs/ux-whattheheel-2026-08-17/` (`DESIGN.md` + `EXPERIENCE.md`, produced after this epic/story breakdown — see `epics.md`'s `inputDocuments` frontmatter). Visual identity: Bold Streetwear direction (dark-mode-only, neon-on-ink palette). Key UX decisions load-bearing for these stories: no style picker (Story 2.3), file-upload-only photo capture (Stories 1.3/2.2), bottom-tab navigation, and a concrete VTO polling UX (2s interval, progress bar, rotating status copy, 30s "still working" fallback) that fills in what NFR1 left unspecified.
 
 ### FR Coverage Map
 
@@ -164,17 +166,17 @@ So that I can access the premium AI Stylist experience.
 
 **Given** I am anonymous
 **When** I click the "unlock AI Stylist" CTA
-**Then** I am prompted to register/sign in via NextAuth
+**Then** I am prompted to register/sign in with email + password via NextAuth's `CredentialsProvider` (no OAuth, no adapter — AD-7)
 
 **Given** valid registration
 **When** I complete it
-**Then** a `users` document is created by the NextAuth MongoDB adapter (adapter-owned, no other code writes to it)
+**Then** `POST /api/auth/register` hashes my password with `bcryptjs` and creates a `users` document via `lib/data/users.ts` (`id`, `email`, `passwordHash`, `createdAt`) — written only by this route, read only inside `authorize()`
 
 **Given** I successfully log in
 **When** I navigate the app
-**Then** my session is available server-side via NextAuth's session helper
+**Then** my session is available server-side via NextAuth's session helper, using `session: { strategy: 'jwt' }` (required by CredentialsProvider — database sessions are incompatible)
 
-**And** `@next-auth/mongodb-adapter` is installed with `--legacy-peer-deps`, configured against the correct dev/prod MongoDB Atlas database names
+**And** no NextAuth database adapter is installed; `bcryptjs` is used for hashing and password comparison, and MongoDB connects to the correct dev/prod Atlas database names
 
 ### Story 2.2: Selfie Capture & Profile Storage
 
@@ -190,7 +192,7 @@ So that the AI Stylist can generate a personalized visualization.
 
 **Given** a valid selfie
 **When** validation passes
-**Then** it's uploaded to Cloudinary (never stored as bytes in MongoDB, AD-4) and the resulting URL is saved to a `user_profiles` document keyed by my `userId` — not the adapter-owned `users` collection
+**Then** it's uploaded to Cloudinary (never stored as bytes in MongoDB, AD-4) and the resulting URL is saved to a `user_profiles` document keyed by my `userId` — not the `users` collection (which holds auth-core fields only, AD-7)
 
 **Given** an invalid selfie (wrong format/too large/wrong dimensions)
 **When** I submit it
@@ -202,12 +204,12 @@ So that the AI Stylist can generate a personalized visualization.
 
 As a registered user with a saved selfie,
 I want to trigger AI virtual try-on for a selected trend,
-So that I can see the shoe visualized on myself in a chosen style.
+So that I can see the shoe visualized on myself.
 
 **Acceptance Criteria:**
 
 **Given** I'm logged in with a saved selfie
-**When** I select a trend and style and trigger VTO
+**When** I select a trend and trigger VTO
 **Then** `POST /api/vto-tasks` creates a task via `lib/services/vtoTask.ts`, requiring an authenticated session (AD-3)
 
 **Given** a task is created
