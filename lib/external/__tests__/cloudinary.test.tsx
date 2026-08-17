@@ -45,4 +45,17 @@ describe("Cloudinary selfie boundary", () => {
     await expect(uploadSelfie(Buffer.from("image"))).rejects.toThrow("configuration is incomplete");
     expect(uploadStream).not.toHaveBeenCalled();
   });
+
+  it("uploads a VTO result to its own folder, distinct from selfies, resolving the detected format", async () => {
+    uploadStream.mockImplementation((options, callback) => {
+      expect(options).toEqual({ resource_type: "image", type: "authenticated", folder: "whattheheel/vto-results", public_id: "opaque-id", overwrite: false });
+      return { end: () => callback(null, { secure_url: "https://cloud.test/result-asset", public_id: "folder/opaque-id", format: "jpg" }) };
+    });
+    const { uploadVtoResult } = await import("@/lib/external/cloudinary");
+    await expect(uploadVtoResult(Buffer.from("result-image"))).resolves.toEqual({
+      secureUrl: "https://cloud.test/result-asset",
+      publicId: "folder/opaque-id",
+      format: "jpg",
+    });
+  });
 });

@@ -5,13 +5,17 @@ const createIndex = jest.fn().mockResolvedValue("taskId_1");
 const insertOne = jest.fn();
 const findOne = jest.fn();
 const updateOne = jest.fn();
-const taskCollection = { createIndex, insertOne, findOne, updateOne };
+const toArray = jest.fn();
+const sort = jest.fn(() => ({ toArray }));
+const find = jest.fn(() => ({ sort }));
+const taskCollection = { createIndex, insertOne, findOne, updateOne, find };
 const collection = jest.fn(() => taskCollection);
 jest.mock("@/lib/data/mongodb", () => ({ getDb: jest.fn(async () => ({ collection })) }));
 
 const baseDoc = {
   taskId: "task-1",
   userId: "user-1",
+  trendId: "chunky-platform-loafer",
   status: "pending" as const,
   srcUrl: "https://example.test/selfie.jpg",
   refUrl: "https://example.test/shoe.png",
@@ -62,11 +66,11 @@ describe("vtoTasks repository", () => {
     updateOne.mockResolvedValue({ acknowledged: true, modifiedCount: 1 });
     const { updateTaskStatus } = await import("@/lib/data/vtoTasks");
 
-    await updateTaskStatus("task-1", { status: "success", resultUrl: "https://cdn.test/result.jpg" });
+    await updateTaskStatus("task-1", { status: "success", resultPublicId: "folder/result-id", resultFormat: "jpg" });
 
     expect(updateOne).toHaveBeenCalledWith(
       { taskId: "task-1", status: "pending" },
-      { $set: expect.objectContaining({ status: "success", resultUrl: "https://cdn.test/result.jpg", updatedAt: expect.any(Date) }) },
+      { $set: expect.objectContaining({ status: "success", resultPublicId: "folder/result-id", resultFormat: "jpg", updatedAt: expect.any(Date) }) },
     );
   });
 
@@ -75,5 +79,16 @@ describe("vtoTasks repository", () => {
     const { updateTaskStatus } = await import("@/lib/data/vtoTasks");
 
     await expect(updateTaskStatus("task-1", { status: "error" })).resolves.toBe(false);
+  });
+
+  it("finds successful tasks for a user, newest first", async () => {
+    const successfulDoc = { ...baseDoc, status: "success" as const, resultPublicId: "folder/result-id", resultFormat: "jpg" };
+    toArray.mockResolvedValue([successfulDoc]);
+    const { findSuccessfulTasksByUser } = await import("@/lib/data/vtoTasks");
+
+    await expect(findSuccessfulTasksByUser("user-1")).resolves.toEqual([successfulDoc]);
+
+    expect(find).toHaveBeenCalledWith({ userId: "user-1", status: "success" });
+    expect(sort).toHaveBeenCalledWith({ createdAt: -1 });
   });
 });

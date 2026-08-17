@@ -198,4 +198,45 @@ describe("youcam client", () => {
       );
     });
   });
+
+  describe("downloadResultImage", () => {
+    it("fetches the given URL and resolves to a Buffer of the response body", async () => {
+      const bytes = new Uint8Array([1, 2, 3, 4]);
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => bytes.buffer,
+      });
+      const { downloadResultImage } = await import("@/lib/external/youcam");
+
+      const result = await downloadResultImage("https://cdn.test/result.jpg");
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://cdn.test/result.jpg",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+      expect(Buffer.isBuffer(result)).toBe(true);
+      expect(Array.from(result)).toEqual([1, 2, 3, 4]);
+    });
+
+    it("throws a typed YouCamApiError on a non-2xx response", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 404 });
+      const { downloadResultImage, YouCamApiError } = await import("@/lib/external/youcam");
+
+      const error = await downloadResultImage("https://cdn.test/result.jpg").catch((e) => e);
+
+      expect(error).toBeInstanceOf(YouCamApiError);
+      expect(error.code).toBe("youcam_result_download_failed");
+    });
+
+    it("throws a typed YouCamApiError on a network failure", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error("fetch failed"));
+      const { downloadResultImage, YouCamApiError } = await import("@/lib/external/youcam");
+
+      const error = await downloadResultImage("https://cdn.test/result.jpg").catch((e) => e);
+
+      expect(error).toBeInstanceOf(YouCamApiError);
+      expect(error.code).toBe("youcam_result_download_failed");
+    });
+  });
 });

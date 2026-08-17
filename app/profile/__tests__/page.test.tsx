@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import ProfilePage from "@/app/profile/page";
 import { UnauthorizedError } from "@/lib/services/auth";
 import { getMyProfile } from "@/lib/services/profile";
+import { getVtoHistory } from "@/lib/services/vtoTask";
 
 jest.mock("next/navigation", () => ({ redirect: jest.fn(() => { throw new Error("redirected"); }) }));
 jest.mock("@/lib/services/profile", () => ({ getMyProfile: jest.fn() }));
+jest.mock("@/lib/services/vtoTask", () => ({ getVtoHistory: jest.fn() }));
 jest.mock("@/lib/services/auth", () => {
   class UnauthorizedError extends Error {}
   return { UnauthorizedError };
@@ -42,6 +44,22 @@ describe("ProfilePage authenticated continuation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(getMyProfile).mockResolvedValue(profile);
+    jest.mocked(getVtoHistory).mockResolvedValue([]);
+  });
+
+  it("shows a Past Try-Ons history section when the user has successful VTO results", async () => {
+    jest.mocked(getVtoHistory).mockResolvedValue([
+      { taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-01T00:00:00.000Z" },
+    ]);
+    const element = await ProfilePage({ searchParams: Promise.resolve({}) } as never);
+    render(element);
+    expect(screen.getByText("Past Try-Ons")).toBeInTheDocument();
+  });
+
+  it("omits the Past Try-Ons section entirely when there is no VTO history", async () => {
+    const element = await ProfilePage({ searchParams: Promise.resolve({}) } as never);
+    render(element);
+    expect(screen.queryByText("Past Try-Ons")).not.toBeInTheDocument();
   });
 
   it("shows a Continue to AI Stylist link when a known trend is carried over and a selfie is saved", async () => {

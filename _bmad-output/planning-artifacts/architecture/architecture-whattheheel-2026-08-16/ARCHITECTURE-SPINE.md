@@ -84,6 +84,12 @@ Dependency direction is one-way: `app/**` (pages/components) → Route Handlers 
 - **Prevents:** a story assuming NextAuth's MongoDB adapter manages user creation/sessions (an OAuth-shaped assumption that doesn't hold for Credentials provider); two divergent password-verification implementations; database-session code that silently breaks because Credentials provider forces JWT
 - **Rule:** Auth uses NextAuth's `CredentialsProvider` only (email + password), with `session: { strategy: 'jwt' }` — required by NextAuth v4, since Credentials provider is incompatible with database-persisted sessions (verified against NextAuth's own docs/FAQ). No adapter is used. The `users` collection is fully app-owned via `lib/data/users.ts`: written only by `POST /api/auth/register` (`id`, `email`, `passwordHash`, `createdAt`), read only inside `CredentialsProvider`'s `authorize()` callback. Passwords are hashed with `bcryptjs` — never stored plain, never compared without hashing.
 
+### AD-8 — VTO result durability
+
+- **Binds:** Story 2.6 (added 2026-08-17, post-launch — no original PRD FR)
+- **Prevents:** VTO history entries silently breaking once YouCam's result-retention window lapses; a second, divergent place where "the result image" gets fetched from
+- **Rule:** The moment a VTO task's polled status transitions to `success`, `lib/services/vtoTask.ts` downloads the YouCam-hosted result image and re-uploads it to Cloudinary using the same authenticated/private asset pattern Story 2.2 established for selfies (AD-4) — server-side only, before the `vto_tasks` document is marked `success`. The raw YouCam result URL is used exactly once, for that one download, and is never persisted or served to the client past that transition. `vto_tasks` stores the Cloudinary `resultPublicId` (not a bare URL), and every read generates a fresh signed URL via the same `getPrivateSelfieUrl`-shaped helper already used for selfies — never a long-lived stored URL, consistent with how selfie URLs already work.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -172,10 +178,12 @@ erDiagram
   VTO_TASK {
     string taskId
     string userId
+    string trendId
     string status
     string errorCode
     string srcCloudinaryUrl
     string refCloudinaryUrl
+    string resultPublicId
     string style
   }
   TREND {
@@ -196,6 +204,7 @@ erDiagram
 | FR-04 AI VTO Integration | `app/api/vto-tasks/*`, `lib/services/vtoTask.ts`, `lib/external/youcam.ts` | AD-1, AD-2, AD-3 |
 | FR-05 Retail Integration | `TREND.buyUrl` field (see Structural Seed ER diagram), feed/detail components | Consistency Conventions (data & formats) |
 | FR-06 VTO Failure Handling | `lib/services/vtoTask.ts` error map, stylist result component | AD-6 |
+| VTO Result History (Story 2.6, no PRD FR) | `lib/services/vtoTask.ts` result-copy step, `app/profile/page.tsx` history grid | AD-8 |
 
 ## Deferred
 

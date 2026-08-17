@@ -4,13 +4,15 @@ import { getDb } from "@/lib/data/mongodb";
 export interface VtoTaskDocument {
   taskId: string;
   userId: string;
+  trendId: string;
   status: "pending" | "success" | "error";
   errorCode?: string;
   srcUrl: string;
   refUrl: string;
   style: string;
   gender: "female" | "male";
-  resultUrl?: string;
+  resultPublicId?: string;
+  resultFormat?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,11 +49,15 @@ export async function findTaskById(taskId: string): Promise<VtoTaskDocument | nu
 
 export async function updateTaskStatus(
   taskId: string,
-  fields: Partial<Pick<VtoTaskDocument, "status" | "errorCode" | "resultUrl">>,
+  fields: Partial<Pick<VtoTaskDocument, "status" | "errorCode" | "resultPublicId" | "resultFormat">>,
 ): Promise<boolean> {
   const result = await (await collection()).updateOne(
     { taskId, status: "pending" },
     { $set: { ...fields, updatedAt: new Date() } },
   );
   return result.modifiedCount === 1;
+}
+
+export async function findSuccessfulTasksByUser(userId: string): Promise<VtoTaskDocument[]> {
+  return (await collection()).find({ userId, status: "success" }).sort({ createdAt: -1 }).toArray();
 }

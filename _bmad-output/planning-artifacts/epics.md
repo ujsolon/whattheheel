@@ -275,3 +275,29 @@ So that I can purchase it directly.
 **Then** the Buy Now button is hidden rather than showing a broken link
 
 **And** no new backend work is needed — UI-only, reusing existing trend data
+
+### Story 2.6: VTO Result History
+
+> Added 2026-08-17, post-launch — not part of the original PRD FR list. Prioritized ahead of Stories 2.4/2.5 as a faster, higher-impact demo addition once Story 2.3's core VTO loop was live.
+
+As a registered user,
+I want to see my past AI try-on results on my profile,
+So that I can revisit looks I've already generated without re-running them.
+
+**Acceptance Criteria:**
+
+**Given** a VTO task transitions to `success`
+**When** its result is persisted
+**Then** the result image is downloaded from YouCam and re-uploaded to this app's own Cloudinary storage (same authenticated/private pattern as selfies, architecture AD-4) — YouCam retains processed results for only ~24 hours (confirmed in `docs/ai-skin-analysis.md`), so the raw YouCam result URL is never the one stored or served past that transition (architecture AD-8)
+
+**Given** a registered user with at least one successful VTO result
+**When** they view their Profile screen
+**Then** a "Past Try-Ons" grid section shows each result's image and its trend's label, most recent first
+
+**Given** a registered user with zero successful VTO results
+**When** they view Profile
+**Then** no history section renders at all — not an empty-state placeholder
+
+**Given** the history grid
+**When** rendered
+**Then** it is view-only — no delete/remove action and no re-trigger/detail interaction (both explicitly deferred; this story is scoped to display only)

@@ -1,8 +1,8 @@
 import { getTrendById } from "@/lib/data/trends";
 import { findProfile, setGenderPreference } from "@/lib/data/userProfiles";
-import { createTask, findTaskById, updateTaskStatus, type VtoTaskDocument } from "@/lib/data/vtoTasks";
-import { getPrivateSelfieUrl } from "@/lib/external/cloudinary";
-import { createShoesTask, getTaskStatus } from "@/lib/external/youcam";
+import { createTask, findSuccessfulTasksByUser, findTaskById, updateTaskStatus, type VtoTaskDocument } from "@/lib/data/vtoTasks";
+import { getPrivateSelfieUrl, uploadVtoResult } from "@/lib/external/cloudinary";
+import { createShoesTask, downloadResultImage, getTaskStatus } from "@/lib/external/youcam";
 import { requireAuthenticatedUser } from "@/lib/services/auth";
 
 // AC1: `epics.md` resolved "no style picker" — every task uses this single
@@ -85,6 +85,7 @@ export async function createVtoTask(
   await createTask({
     taskId,
     userId: user.id,
+    trendId: trend.id,
     status: "pending",
     // Store the non-credential private asset URL, not the temporary signed URL
     // that grants YouCam time-bounded access to the selfie.
@@ -117,8 +118,18 @@ export async function getVtoTaskStatus(taskId: string): Promise<VtoTaskView> {
   }
 
   if (result.status === "success") {
-    const updated = await updateTaskStatus(taskId, { status: "success", resultUrl: result.resultUrl });
-    if (updated) return { taskId, status: "success", resultUrl: result.resultUrl };
+    // AD-8: YouCam retains results for only ~24h, so copy to durable storage
+    // the moment success is observed — never store/serve the raw YouCam URL.
+    const buffer = await downloadResultImage(result.resultUrl);
+    const uploaded = await uploadVtoResult(buffer);
+    const updated = await updateTaskStatus(taskId, {
+      status: "success",
+      resultPublicId: uploaded.publicId,
+      resultFormat: uploaded.format,
+    });
+    if (updated) {
+      return { taskId, status: "success", resultUrl: getPrivateSelfieUrl(uploaded.publicId, uploaded.format, Date.now()) };
+    }
     const authoritative = await findTaskById(taskId);
     if (!authoritative || authoritative.userId !== user.id) throw new TaskNotFoundError();
     return toView(authoritative);
@@ -132,5 +143,35 @@ export async function getVtoTaskStatus(taskId: string): Promise<VtoTaskView> {
 }
 
 function toView(task: VtoTaskDocument): VtoTaskView {
-  return { taskId: task.taskId, status: task.status, resultUrl: task.resultUrl, errorCode: task.errorCode };
+  const resultUrl =
+    task.status === "success" && task.resultPublicId && task.resultFormat
+      ? getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now())
+      : undefined;
+  return { taskId: task.taskId, status: task.status, resultUrl, errorCode: task.errorCode };
+}
+
+export interface VtoHistoryItem {
+  taskId: string;
+  trendLabel: string;
+  resultUrl: string;
+  createdAt: string;
+}
+
+export async function getVtoHistory(): Promise<VtoHistoryItem[]> {
+  const user = await requireAuthenticatedUser();
+  const tasks = await findSuccessfulTasksByUser(user.id);
+
+  const items: VtoHistoryItem[] = [];
+  for (const task of tasks) {
+    if (!task.trendId || !task.resultPublicId || !task.resultFormat) continue;
+    const trend = getTrendById(task.trendId);
+    if (!trend) continue;
+    items.push({
+      taskId: task.taskId,
+      trendLabel: trend.label,
+      resultUrl: getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now()),
+      createdAt: task.createdAt.toISOString(),
+    });
+  }
+  return items;
 }

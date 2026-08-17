@@ -1,13 +1,14 @@
 /** @jest-environment node */
 import { getTrendById } from "@/lib/data/trends";
 import { findProfile, setGenderPreference } from "@/lib/data/userProfiles";
-import { createTask, findTaskById, updateTaskStatus } from "@/lib/data/vtoTasks";
-import { getPrivateSelfieUrl } from "@/lib/external/cloudinary";
-import { createShoesTask, getTaskStatus } from "@/lib/external/youcam";
+import { createTask, findSuccessfulTasksByUser, findTaskById, updateTaskStatus } from "@/lib/data/vtoTasks";
+import { getPrivateSelfieUrl, uploadVtoResult } from "@/lib/external/cloudinary";
+import { createShoesTask, downloadResultImage, getTaskStatus } from "@/lib/external/youcam";
 import { requireAuthenticatedUser, UnauthorizedError } from "@/lib/services/auth";
 import {
   createVtoTask,
   GenderPreferenceRequiredError,
+  getVtoHistory,
   getVtoTaskStatus,
   NoSelfieError,
   TaskNotFoundError,
@@ -16,9 +17,14 @@ import {
 
 jest.mock("@/lib/data/trends", () => ({ getTrendById: jest.fn() }));
 jest.mock("@/lib/data/userProfiles", () => ({ findProfile: jest.fn(), setGenderPreference: jest.fn() }));
-jest.mock("@/lib/data/vtoTasks", () => ({ createTask: jest.fn(), findTaskById: jest.fn(), updateTaskStatus: jest.fn() }));
-jest.mock("@/lib/external/cloudinary", () => ({ getPrivateSelfieUrl: jest.fn() }));
-jest.mock("@/lib/external/youcam", () => ({ createShoesTask: jest.fn(), getTaskStatus: jest.fn() }));
+jest.mock("@/lib/data/vtoTasks", () => ({
+  createTask: jest.fn(),
+  findTaskById: jest.fn(),
+  updateTaskStatus: jest.fn(),
+  findSuccessfulTasksByUser: jest.fn(),
+}));
+jest.mock("@/lib/external/cloudinary", () => ({ getPrivateSelfieUrl: jest.fn(), uploadVtoResult: jest.fn() }));
+jest.mock("@/lib/external/youcam", () => ({ createShoesTask: jest.fn(), getTaskStatus: jest.fn(), downloadResultImage: jest.fn() }));
 jest.mock("@/lib/services/auth", () => {
   class UnauthorizedError extends Error {}
   return { requireAuthenticatedUser: jest.fn(), UnauthorizedError };
@@ -124,6 +130,7 @@ describe("createVtoTask", () => {
       expect.objectContaining({
         taskId: "task-1",
         userId: "user-1",
+        trendId: "chunky-platform-loafer",
         status: "pending",
         style: expect.any(String),
         srcUrl: profileWithGender.selfieUrl,
@@ -137,6 +144,7 @@ describe("getVtoTaskStatus", () => {
   const storedTask = {
     taskId: "task-1",
     userId: "user-1",
+    trendId: "chunky-platform-loafer",
     status: "pending" as const,
     srcUrl: "https://signed.test/selfie.jpg",
     refUrl: "https://app.test/trends/chunky-platform-loafer.png",
@@ -149,6 +157,9 @@ describe("getVtoTaskStatus", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(requireAuthenticatedUser).mockResolvedValue(user);
+    jest.mocked(downloadResultImage).mockResolvedValue(Buffer.from("result-bytes"));
+    jest.mocked(uploadVtoResult).mockResolvedValue({ secureUrl: "https://cloud.test/result-asset", publicId: "folder/result-id", format: "jpg" });
+    jest.mocked(getPrivateSelfieUrl).mockImplementation((publicId) => `https://signed.test/${publicId}`);
   });
 
   it("rejects when unauthenticated", async () => {
@@ -177,12 +188,21 @@ describe("getVtoTaskStatus", () => {
     expect(result).toEqual({ taskId: "task-1", status: "pending", resultUrl: undefined, errorCode: undefined });
   });
 
-  it("persists and returns a success transition", async () => {
+  it("persists and returns a success transition, copying the result image to durable storage first", async () => {
     jest.mocked(findTaskById).mockResolvedValue(storedTask);
     jest.mocked(getTaskStatus).mockResolvedValue({ status: "success", resultUrl: "https://cdn.test/result.jpg" });
+    jest.mocked(updateTaskStatus).mockResolvedValue(true);
+
     const result = await getVtoTaskStatus("task-1");
-    expect(updateTaskStatus).toHaveBeenCalledWith("task-1", { status: "success", resultUrl: "https://cdn.test/result.jpg" });
-    expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg" });
+
+    expect(downloadResultImage).toHaveBeenCalledWith("https://cdn.test/result.jpg");
+    expect(uploadVtoResult).toHaveBeenCalledWith(Buffer.from("result-bytes"));
+    expect(updateTaskStatus).toHaveBeenCalledWith("task-1", {
+      status: "success",
+      resultPublicId: "folder/result-id",
+      resultFormat: "jpg",
+    });
+    expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: "https://signed.test/folder/result-id" });
   });
 
   it("persists and returns an error transition", async () => {
@@ -196,29 +216,95 @@ describe("getVtoTaskStatus", () => {
   it("returns the authoritative terminal state when another poll wins the update race", async () => {
     jest.mocked(findTaskById)
       .mockResolvedValueOnce(storedTask)
-      .mockResolvedValueOnce({ ...storedTask, status: "success", resultUrl: "https://cdn.test/winner.jpg" });
+      .mockResolvedValueOnce({ ...storedTask, status: "success", resultPublicId: "folder/winner-id", resultFormat: "png" });
     jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode: "error_inference" });
     jest.mocked(updateTaskStatus).mockResolvedValue(false);
 
     await expect(getVtoTaskStatus("task-1")).resolves.toEqual({
       taskId: "task-1",
       status: "success",
-      resultUrl: "https://cdn.test/winner.jpg",
+      resultUrl: "https://signed.test/folder/winner-id",
       errorCode: undefined,
     });
   });
 
   it("does not re-poll YouCam for an already-terminal task", async () => {
-    jest.mocked(findTaskById).mockResolvedValue({ ...storedTask, status: "success", resultUrl: "https://cdn.test/result.jpg" });
+    jest.mocked(findTaskById).mockResolvedValue({ ...storedTask, status: "success", resultPublicId: "folder/result-id", resultFormat: "jpg" });
     const result = await getVtoTaskStatus("task-1");
     expect(getTaskStatus).not.toHaveBeenCalled();
-    expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg", errorCode: undefined });
+    expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: "https://signed.test/folder/result-id", errorCode: undefined });
   });
 
   it("never re-exposes srcUrl/refUrl to the caller", async () => {
-    jest.mocked(findTaskById).mockResolvedValue({ ...storedTask, status: "success", resultUrl: "https://cdn.test/result.jpg" });
+    jest.mocked(findTaskById).mockResolvedValue({ ...storedTask, status: "success", resultPublicId: "folder/result-id", resultFormat: "jpg" });
     const result = await getVtoTaskStatus("task-1");
     expect(result).not.toHaveProperty("srcUrl");
     expect(result).not.toHaveProperty("refUrl");
+  });
+
+  it("resolves an already-terminal success task with no stored result reference to an undefined resultUrl, without throwing (AC5, pre-story tasks)", async () => {
+    jest.mocked(findTaskById).mockResolvedValue({ ...storedTask, status: "success" });
+    const result = await getVtoTaskStatus("task-1");
+    expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: undefined, errorCode: undefined });
+  });
+});
+
+describe("getVtoHistory", () => {
+  const successfulTask = {
+    taskId: "task-1",
+    userId: "user-1",
+    trendId: "chunky-platform-loafer",
+    status: "success" as const,
+    srcUrl: "stored",
+    refUrl: "https://app.test/trends/chunky-platform-loafer.png",
+    style: "random",
+    gender: "female" as const,
+    resultPublicId: "folder/result-id",
+    resultFormat: "jpg",
+    createdAt: new Date("2026-01-01"),
+    updatedAt: new Date("2026-01-01"),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(requireAuthenticatedUser).mockResolvedValue(user);
+    jest.mocked(getTrendById).mockReturnValue(trend);
+    jest.mocked(getPrivateSelfieUrl).mockImplementation((publicId) => `https://signed.test/${publicId}`);
+  });
+
+  it("rejects when unauthenticated", async () => {
+    jest.mocked(requireAuthenticatedUser).mockRejectedValue(new UnauthorizedError());
+    await expect(getVtoHistory()).rejects.toBeInstanceOf(UnauthorizedError);
+  });
+
+  it("returns an empty list when there are no successful tasks", async () => {
+    jest.mocked(findSuccessfulTasksByUser).mockResolvedValue([]);
+    await expect(getVtoHistory()).resolves.toEqual([]);
+  });
+
+  it("maps well-formed successful tasks to history items, in the order the data layer already sorted them", async () => {
+    jest.mocked(findSuccessfulTasksByUser).mockResolvedValue([successfulTask]);
+    await expect(getVtoHistory()).resolves.toEqual([
+      {
+        taskId: "task-1",
+        trendLabel: "Chunky Platform Loafer",
+        resultUrl: "https://signed.test/folder/result-id",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("filters out a pre-story task missing trendId/result fields instead of producing a broken entry", async () => {
+    const malformed = { ...successfulTask, taskId: "task-old", trendId: undefined, resultPublicId: undefined, resultFormat: undefined };
+    jest.mocked(findSuccessfulTasksByUser).mockResolvedValue([malformed as never, successfulTask]);
+    const result = await getVtoHistory();
+    expect(result).toHaveLength(1);
+    expect(result[0].taskId).toBe("task-1");
+  });
+
+  it("filters out a task whose trend can no longer be resolved", async () => {
+    jest.mocked(getTrendById).mockReturnValue(undefined);
+    jest.mocked(findSuccessfulTasksByUser).mockResolvedValue([successfulTask]);
+    await expect(getVtoHistory()).resolves.toEqual([]);
   });
 });

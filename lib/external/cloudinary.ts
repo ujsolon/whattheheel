@@ -20,6 +20,17 @@ export async function uploadSelfie(buffer: Buffer): Promise<UploadedSelfie> {
     stream.end(buffer);
   });
 }
+export interface UploadedResult { secureUrl: string; publicId: string; format: string }
+export async function uploadVtoResult(buffer: Buffer): Promise<UploadedResult> {
+  configure();
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream({ resource_type: "image", type: "authenticated", folder: "whattheheel/vto-results", public_id: randomUUID(), overwrite: false }, (error, result) => {
+      if (error || !result) reject(error ?? new Error("Cloudinary upload failed"));
+      else resolve({ secureUrl: result.secure_url, publicId: result.public_id, format: result.format });
+    });
+    stream.end(buffer);
+  });
+}
 export async function deleteSelfie(publicId: string): Promise<void> {
   configure(); await cloudinary.uploader.destroy(publicId, { resource_type: "image", type: "authenticated", invalidate: true });
 }
