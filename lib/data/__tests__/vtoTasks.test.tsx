@@ -59,14 +59,21 @@ describe("vtoTasks repository", () => {
   });
 
   it("updates a task's status and terminal fields", async () => {
-    updateOne.mockResolvedValue({ acknowledged: true });
+    updateOne.mockResolvedValue({ acknowledged: true, modifiedCount: 1 });
     const { updateTaskStatus } = await import("@/lib/data/vtoTasks");
 
     await updateTaskStatus("task-1", { status: "success", resultUrl: "https://cdn.test/result.jpg" });
 
     expect(updateOne).toHaveBeenCalledWith(
-      { taskId: "task-1" },
+      { taskId: "task-1", status: "pending" },
       { $set: expect.objectContaining({ status: "success", resultUrl: "https://cdn.test/result.jpg", updatedAt: expect.any(Date) }) },
     );
+  });
+
+  it("reports when a terminal transition loses a concurrent race", async () => {
+    updateOne.mockResolvedValue({ acknowledged: true, modifiedCount: 0 });
+    const { updateTaskStatus } = await import("@/lib/data/vtoTasks");
+
+    await expect(updateTaskStatus("task-1", { status: "error" })).resolves.toBe(false);
   });
 });

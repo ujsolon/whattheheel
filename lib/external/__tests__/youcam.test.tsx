@@ -148,6 +148,30 @@ describe("youcam client", () => {
       });
     });
 
+    it("rejects an unknown or missing upstream task status instead of polling forever", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 200, data: { task_status: "queued_some_new_way" } }),
+      });
+      const { getTaskStatus, YouCamApiError } = await import("@/lib/external/youcam");
+
+      const error = await getTaskStatus("task-123").catch((cause) => cause);
+      expect(error).toBeInstanceOf(YouCamApiError);
+      expect(error.code).toBe("youcam_unexpected_response");
+    });
+
+    it("rejects a success response with a non-HTTPS result URL", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { task_status: "success", results: { url: "http://cdn.test/result.jpg" } } }),
+      });
+      const { getTaskStatus, YouCamApiError } = await import("@/lib/external/youcam");
+
+      await expect(getTaskStatus("task-123")).rejects.toBeInstanceOf(YouCamApiError);
+    });
+
     it("throws YouCamApiError on a non-2xx status response", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,
@@ -157,6 +181,21 @@ describe("youcam client", () => {
       const { getTaskStatus, YouCamApiError } = await import("@/lib/external/youcam");
 
       await expect(getTaskStatus("task-123")).rejects.toBeInstanceOf(YouCamApiError);
+    });
+
+    it("bounds upstream requests with an abort signal", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { task_status: "running" } }),
+      });
+      const { getTaskStatus } = await import("@/lib/external/youcam");
+
+      await getTaskStatus("task-123");
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
     });
   });
 });

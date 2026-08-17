@@ -1,4 +1,5 @@
 const SHOES_TASK_PATH = "/s2s/v2.0/task/shoes";
+const YOUCAM_TIMEOUT_MS = 15_000;
 
 export class YouCamApiError extends Error {
   constructor(
@@ -29,7 +30,7 @@ interface RawErrorBody {
 async function requestJson(url: string, init: RequestInit): Promise<unknown> {
   let response: Response;
   try {
-    response = await fetch(url, init);
+    response = await fetch(url, { ...init, signal: AbortSignal.timeout(YOUCAM_TIMEOUT_MS) });
   } catch {
     throw new YouCamApiError("youcam_network_error", "Could not reach the YouCam API.");
   }
@@ -111,7 +112,16 @@ export async function getTaskStatus(taskId: string): Promise<TaskStatusResult> {
     if (!resultUrl) {
       throw new YouCamApiError("youcam_unexpected_response", "YouCam reported success with no result URL.");
     }
-    return { status: "success", resultUrl };
+    let parsedResultUrl: URL;
+    try {
+      parsedResultUrl = new URL(resultUrl);
+    } catch {
+      throw new YouCamApiError("youcam_unexpected_response", "YouCam returned an invalid result URL.");
+    }
+    if (parsedResultUrl.protocol !== "https:") {
+      throw new YouCamApiError("youcam_unexpected_response", "YouCam returned an insecure result URL.");
+    }
+    return { status: "success", resultUrl: parsedResultUrl.toString() };
   }
 
   if (data.task_status === "error") {
@@ -119,5 +129,7 @@ export async function getTaskStatus(taskId: string): Promise<TaskStatusResult> {
     return { status: "error", errorCode };
   }
 
-  return { status: "pending" };
+  if (data.task_status === "running") return { status: "pending" };
+
+  throw new YouCamApiError("youcam_unexpected_response", "YouCam returned an unknown task status.");
 }

@@ -48,6 +48,10 @@ export async function findTaskById(taskId: string): Promise<VtoTaskDocument | nu
 export async function updateTaskStatus(
   taskId: string,
   fields: Partial<Pick<VtoTaskDocument, "status" | "errorCode" | "resultUrl">>,
-): Promise<void> {
-  await (await collection()).updateOne({ taskId }, { $set: { ...fields, updatedAt: new Date() } });
+): Promise<boolean> {
+  const result = await (await collection()).updateOne(
+    { taskId, status: "pending" },
+    { $set: { ...fields, updatedAt: new Date() } },
+  );
+  return result.modifiedCount === 1;
 }

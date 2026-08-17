@@ -4,7 +4,7 @@ baseline_commit: 1303bb86cae10754f7e3b4bfb70ca73e639a46e7
 
 # Story 2.3: AI Virtual Try-On Generation
 
-Status: review
+Status: done
 
 ## Story
 
@@ -75,17 +75,17 @@ so that I can see the shoe visualized on myself.
 ### Review Findings
 
 - [x] [Review][Defer] Orphan-task handling when Mongo persistence fails after YouCam accepts a billable task — accepted for hackathon scope due to low expected volume, disproportionate reconciliation complexity, and limited time before submission. [`lib/services/vtoTask.ts:78`]
-- [ ] [Review][Patch] Validate gender against the explicit enum at both HTTP and service boundaries, and validate the trend before persisting a first-time preference. [`app/api/vto-tasks/route.ts:23`]
-- [ ] [Review][Patch] Build public trend-image URLs from a trusted configured deployment origin rather than incoming request metadata. [`app/api/vto-tasks/route.ts:17`]
-- [ ] [Review][Patch] Persist a non-credential private selfie reference instead of the temporary signed delivery URL sent to YouCam. [`lib/services/vtoTask.ts:75`]
-- [ ] [Review][Patch] Make polling single-flight and task terminal updates conditional so overlapping requests cannot race or overwrite terminal state. [`app/components/VtoStylist.tsx:71`]
-- [ ] [Review][Patch] Retain the existing task across poll failures/timeouts, stop after the fourth consecutive failure, show the specified lost-connection copy, and resume polling that same task on retry. [`app/components/VtoStylist.tsx:71`]
-- [ ] [Review][Patch] Use the specified two-second polling cadence, poll immediately, and add the 30-second “Still working — hang tight.” state. [`app/components/VtoStylist.tsx:7`]
-- [ ] [Review][Patch] Add bounded YouCam fetch timeouts and map status-poll upstream failures to the stable 502 response envelope. [`lib/external/youcam.ts:29`]
-- [ ] [Review][Patch] Reject unknown YouCam statuses, require an HTTPS result URL, and never enter the client success state without a usable result. [`lib/external/youcam.ts:109`]
-- [ ] [Review][Patch] Preserve a validated selected trend when redirecting a no-selfie Stylist visitor through Profile. [`app/stylist/page.tsx:35`]
-- [ ] [Review][Patch] Implement the compact, in-surface selected treatment required for the no-trend picker instead of ordinary full-size cards and a full navigation. [`app/components/VtoStylist.tsx:137`]
-- [ ] [Review][Patch] Bound the POST JSON body before parsing so the public route cannot allocate an arbitrarily large request. [`app/api/vto-tasks/route.ts:18`]
+- [x] [Review][Patch] Validate gender against the explicit enum at both HTTP and service boundaries, and validate the trend before persisting a first-time preference. [`app/api/vto-tasks/route.ts:23`]
+- [x] [Review][Patch] Build public trend-image URLs from a trusted configured deployment origin rather than incoming request metadata. [`app/api/vto-tasks/route.ts:17`]
+- [x] [Review][Patch] Persist a non-credential private selfie reference instead of the temporary signed delivery URL sent to YouCam. [`lib/services/vtoTask.ts:75`]
+- [x] [Review][Patch] Make polling single-flight and task terminal updates conditional so overlapping requests cannot race or overwrite terminal state. [`app/components/VtoStylist.tsx:71`]
+- [x] [Review][Patch] Retain the existing task across poll failures/timeouts, stop after the fourth consecutive failure, show the specified lost-connection copy, and resume polling that same task on retry. [`app/components/VtoStylist.tsx:71`]
+- [x] [Review][Patch] Use the specified two-second polling cadence, poll immediately, and add the 30-second “Still working — hang tight.” state. [`app/components/VtoStylist.tsx:7`]
+- [x] [Review][Patch] Add bounded YouCam fetch timeouts and map status-poll upstream failures to the stable 502 response envelope. [`lib/external/youcam.ts:29`]
+- [x] [Review][Patch] Reject unknown YouCam statuses, require an HTTPS result URL, and never enter the client success state without a usable result. [`lib/external/youcam.ts:109`]
+- [x] [Review][Patch] Preserve a validated selected trend when redirecting a no-selfie Stylist visitor through Profile. [`app/stylist/page.tsx:35`]
+- [x] [Review][Patch] Implement the compact, in-surface selected treatment required for the no-trend picker instead of ordinary full-size cards and a full navigation. [`app/components/VtoStylist.tsx:137`]
+- [x] [Review][Patch] Bound the POST JSON body before parsing so the public route cannot allocate an arbitrarily large request. [`app/api/vto-tasks/route.ts:18`]
 
 ## Dev Notes
 
@@ -249,3 +249,4 @@ Not part of this story's changes (unrelated, concurrent): `_bmad-output/implemen
 ## Change Log
 
 - 2026-08-17: Implemented AI Virtual Try-On generation end-to-end (YouCam client, `vto_tasks`, orchestration service, both Route Handlers, the gated `/stylist` screen, and the trigger/poll/result UI), including a gender-as-profile-preference addition beyond the original story scope (per product decision). Verified live against the real YouCam API — found and fixed two real bugs in the process (wrong status field name, too-short signed-URL expiry) — and advanced the story to review.
+- 2026-08-17: Applied all 11 code-review patches covering input/origin hardening, credential-safe task persistence, concurrency-safe polling/status updates, task-preserving connection retries, UX timing/copy, upstream validation/timeouts, trend continuity, compact in-place selection, and bounded request parsing. Verified 206 tests, lint, and production build; marked done. Orphan-task reconciliation remains an explicitly accepted hackathon deferment.

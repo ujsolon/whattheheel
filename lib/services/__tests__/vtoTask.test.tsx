@@ -49,6 +49,7 @@ describe("createVtoTask", () => {
     jest.mocked(getTrendById).mockReturnValue(trend);
     jest.mocked(getPrivateSelfieUrl).mockReturnValue("https://signed.test/selfie.jpg");
     jest.mocked(createShoesTask).mockResolvedValue({ taskId: "task-1" });
+    jest.mocked(updateTaskStatus).mockResolvedValue(true);
   });
 
   it("rejects when unauthenticated", async () => {
@@ -88,6 +89,16 @@ describe("createVtoTask", () => {
     jest.mocked(getTrendById).mockReturnValue(undefined);
     await expect(createVtoTask("not-a-trend", "https://app.test")).rejects.toBeInstanceOf(TrendNotFoundError);
     expect(createShoesTask).not.toHaveBeenCalled();
+    expect(setGenderPreference).not.toHaveBeenCalled();
+  });
+
+  it("defensively rejects a gender outside the supported enum", async () => {
+    jest.mocked(findProfile).mockResolvedValue({ ...profileWithGender, gender: undefined } as never);
+    await expect(createVtoTask("chunky-platform-loafer", "https://app.test", "invalid")).rejects.toBeInstanceOf(
+      GenderPreferenceRequiredError,
+    );
+    expect(setGenderPreference).not.toHaveBeenCalled();
+    expect(createShoesTask).not.toHaveBeenCalled();
   });
 
   it("uses a freshly signed selfie URL, never the raw stored profile.selfieUrl", async () => {
@@ -110,7 +121,13 @@ describe("createVtoTask", () => {
   it("persists the new task and returns its id and pending status", async () => {
     const result = await createVtoTask("chunky-platform-loafer", "https://app.test");
     expect(createTask).toHaveBeenCalledWith(
-      expect.objectContaining({ taskId: "task-1", userId: "user-1", status: "pending", style: expect.any(String) }),
+      expect.objectContaining({
+        taskId: "task-1",
+        userId: "user-1",
+        status: "pending",
+        style: expect.any(String),
+        srcUrl: profileWithGender.selfieUrl,
+      }),
     );
     expect(result).toEqual({ taskId: "task-1", status: "pending" });
   });
@@ -174,6 +191,21 @@ describe("getVtoTaskStatus", () => {
     const result = await getVtoTaskStatus("task-1");
     expect(updateTaskStatus).toHaveBeenCalledWith("task-1", { status: "error", errorCode: "error_no_face" });
     expect(result).toEqual({ taskId: "task-1", status: "error", errorCode: "error_no_face" });
+  });
+
+  it("returns the authoritative terminal state when another poll wins the update race", async () => {
+    jest.mocked(findTaskById)
+      .mockResolvedValueOnce(storedTask)
+      .mockResolvedValueOnce({ ...storedTask, status: "success", resultUrl: "https://cdn.test/winner.jpg" });
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode: "error_inference" });
+    jest.mocked(updateTaskStatus).mockResolvedValue(false);
+
+    await expect(getVtoTaskStatus("task-1")).resolves.toEqual({
+      taskId: "task-1",
+      status: "success",
+      resultUrl: "https://cdn.test/winner.jpg",
+      errorCode: undefined,
+    });
   });
 
   it("does not re-poll YouCam for an already-terminal task", async () => {

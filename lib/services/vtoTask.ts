@@ -53,12 +53,19 @@ export interface VtoTaskView {
 export async function createVtoTask(
   trendId: string,
   origin: string,
-  genderChoice?: "female" | "male",
+  genderChoice?: string,
 ): Promise<{ taskId: string; status: "pending" }> {
   const user = await requireAuthenticatedUser();
 
   const profile = await findProfile(user.id);
   if (!profile) throw new NoSelfieError();
+
+  const trend = getTrendById(trendId);
+  if (!trend) throw new TrendNotFoundError();
+
+  if (genderChoice !== undefined && genderChoice !== "female" && genderChoice !== "male") {
+    throw new GenderPreferenceRequiredError();
+  }
 
   let gender = profile.gender;
   if (!gender) {
@@ -66,9 +73,6 @@ export async function createVtoTask(
     gender = genderChoice;
     await setGenderPreference(user.id, genderChoice);
   }
-
-  const trend = getTrendById(trendId);
-  if (!trend) throw new TrendNotFoundError();
 
   // A fresh signature every call — `profile.selfieUrl` is a private
   // Cloudinary asset, never directly fetchable by YouCam.
@@ -82,7 +86,9 @@ export async function createVtoTask(
     taskId,
     userId: user.id,
     status: "pending",
-    srcUrl,
+    // Store the non-credential private asset URL, not the temporary signed URL
+    // that grants YouCam time-bounded access to the selfie.
+    srcUrl: profile.selfieUrl,
     refUrl,
     style: STYLE,
     gender,
@@ -111,12 +117,18 @@ export async function getVtoTaskStatus(taskId: string): Promise<VtoTaskView> {
   }
 
   if (result.status === "success") {
-    await updateTaskStatus(taskId, { status: "success", resultUrl: result.resultUrl });
-    return { taskId, status: "success", resultUrl: result.resultUrl };
+    const updated = await updateTaskStatus(taskId, { status: "success", resultUrl: result.resultUrl });
+    if (updated) return { taskId, status: "success", resultUrl: result.resultUrl };
+    const authoritative = await findTaskById(taskId);
+    if (!authoritative || authoritative.userId !== user.id) throw new TaskNotFoundError();
+    return toView(authoritative);
   }
 
-  await updateTaskStatus(taskId, { status: "error", errorCode: result.errorCode });
-  return { taskId, status: "error", errorCode: result.errorCode };
+  const updated = await updateTaskStatus(taskId, { status: "error", errorCode: result.errorCode });
+  if (updated) return { taskId, status: "error", errorCode: result.errorCode };
+  const authoritative = await findTaskById(taskId);
+  if (!authoritative || authoritative.userId !== user.id) throw new TaskNotFoundError();
+  return toView(authoritative);
 }
 
 function toView(task: VtoTaskDocument): VtoTaskView {

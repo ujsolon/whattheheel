@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { VtoStylist } from "@/app/components/VtoStylist";
 
@@ -20,18 +20,17 @@ describe("VtoStylist", () => {
     jest.useRealTimers();
   });
 
-  it("renders a trend picker reusing TrendCard when no trend is carried over", () => {
+  it("renders a compact in-surface trend picker and applies selection without navigation", () => {
     render(<VtoStylist initialTrend={undefined} initialGender="female" trends={[trend, otherTrend]} />);
 
-    expect(screen.getByRole("link", { name: "Chunky Platform Loafer" })).toHaveAttribute(
-      "href",
-      "/stylist?trend=chunky-platform-loafer",
-    );
-    expect(screen.getByRole("link", { name: "Burgundy Western Boot" })).toHaveAttribute(
-      "href",
-      "/stylist?trend=burgundy-western-boot",
-    );
+    const choice = screen.getByRole("button", { name: "Chunky Platform Loafer" });
+    expect(choice).toHaveAttribute("aria-pressed", "false");
     expect(screen.queryByRole("button", { name: /try it on/i })).not.toBeInTheDocument();
+
+    fireEvent.click(choice);
+    expect(choice).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Selected")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try it on/i })).toBeInTheDocument();
   });
 
   it("shows the pre-selected trend and a trigger button when a trend is carried over", () => {
@@ -82,15 +81,16 @@ describe("VtoStylist", () => {
 
   it("polls on a fixed interval and transitions to the result image on success", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
+    (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
+    (global.fetch as jest.Mock).mockResolvedValue(
+      jsonResponse({ data: { taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg" } }),
+    );
 
     render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
 
-    (global.fetch as jest.Mock).mockResolvedValue(
-      jsonResponse({ data: { taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg" } }),
-    );
-    await jest.advanceTimersByTimeAsync(3000);
+    await act(async () => jest.advanceTimersByTimeAsync(2000));
 
     await waitFor(() =>
       expect(screen.getByRole("img", { name: /your ai try-on result/i })).toHaveAttribute(
@@ -103,49 +103,92 @@ describe("VtoStylist", () => {
 
   it("transitions to the generic error message on an error status", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
+    (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
+    (global.fetch as jest.Mock).mockResolvedValue(
+      jsonResponse({ data: { taskId: "task-1", status: "error", errorCode: "error_no_face" } }),
+    );
 
     render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
 
-    (global.fetch as jest.Mock).mockResolvedValue(
-      jsonResponse({ data: { taskId: "task-1", status: "error", errorCode: "error_no_face" } }),
-    );
-    await jest.advanceTimersByTimeAsync(3000);
+    await act(async () => jest.advanceTimersByTimeAsync(2000));
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try another photo|retry/i })).toBeInTheDocument();
   });
 
-  it("stops polling and shows the generic error after the 90s ceiling with no terminal status", async () => {
+  it("shows long-wait feedback at 30s and the lost-connection treatment at the 90s ceiling", async () => {
     (global.fetch as jest.Mock).mockResolvedValue(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
 
     render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
 
-    await jest.advanceTimersByTimeAsync(90_000);
+    await act(async () => jest.advanceTimersByTimeAsync(30_000));
+    expect(screen.getByText("Still working — hang tight.")).toBeInTheDocument();
 
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    await act(async () => jest.advanceTimersByTimeAsync(60_000));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We lost the connection — tap to retry.");
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
   it("retry resets to idle, ready to trigger again", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
+    (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
+    (global.fetch as jest.Mock).mockResolvedValue(
+      jsonResponse({ data: { taskId: "task-1", status: "error", errorCode: "error_no_face" } }),
+    );
 
     render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
 
-    (global.fetch as jest.Mock).mockResolvedValue(
-      jsonResponse({ data: { taskId: "task-1", status: "error", errorCode: "error_no_face" } }),
-    );
-    await jest.advanceTimersByTimeAsync(3000);
+    await act(async () => jest.advanceTimersByTimeAsync(2000));
     await screen.findByRole("alert");
 
     fireEvent.click(screen.getByRole("button", { name: /try another photo|retry/i }));
 
     expect(screen.getByRole("button", { name: /try it on/i })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("stops after four consecutive poll failures and retries the same task without another POST", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValue(jsonResponse({}, false));
+
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("progressbar");
+    await act(async () => jest.advanceTimersByTimeAsync(6000));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We lost the connection — tap to retry.");
+    (global.fetch as jest.Mock).mockResolvedValue(
+      jsonResponse({ data: { taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg" } }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByRole("img", { name: /your ai try-on result/i })).toBeInTheDocument();
+    expect((global.fetch as jest.Mock).mock.calls.filter(([url]) => url === "/api/vto-tasks")).toHaveLength(1);
+  });
+
+  it("does not overlap polls while a status request is still in flight", async () => {
+    let resolvePoll!: (response: Response) => void;
+    const pendingPoll = new Promise<Response>((resolve) => {
+      resolvePoll = resolve;
+    });
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockReturnValueOnce(pendingPoll);
+
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("progressbar");
+    await act(async () => jest.advanceTimersByTimeAsync(10_000));
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+
+    await act(async () => resolvePoll(jsonResponse({ data: { taskId: "task-1", status: "pending" } })));
   });
 });

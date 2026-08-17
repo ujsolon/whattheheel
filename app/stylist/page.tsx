@@ -29,7 +29,7 @@ export default async function StylistPage({ searchParams }: PageProps<"/stylist"
   }
 
   if (!profile.selfieUrl) {
-    redirect("/profile");
+    redirect(trend ? `/profile?trend=${encodeURIComponent(trend.id)}` : "/profile");
   }
 
   return (

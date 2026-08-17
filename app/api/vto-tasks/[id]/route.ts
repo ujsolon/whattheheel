@@ -1,5 +1,6 @@
 import { UnauthorizedError } from "@/lib/services/auth";
 import { getVtoTaskStatus, TaskNotFoundError } from "@/lib/services/vtoTask";
+import { YouCamApiError } from "@/lib/external/youcam";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   } catch (cause) {
     if (cause instanceof UnauthorizedError) return error("unauthorized", "Sign in to check this try-on.", 401);
     if (cause instanceof TaskNotFoundError) return error("not_found", "That try-on session could not be found.", 404);
+    if (cause instanceof YouCamApiError) return error(cause.code, cause.message, 502);
     console.error("vto_task_status_failed", {
       correlationId: crypto.randomUUID(),
       errorClass: cause instanceof Error ? cause.name : "UnknownError",

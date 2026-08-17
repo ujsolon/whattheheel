@@ -33,12 +33,15 @@ function request(body: unknown) {
 }
 
 describe("POST /api/vto-tasks", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.NEXTAUTH_URL = "https://trusted.test";
+  });
 
-  it("passes the request's own origin and body fields through to the service", async () => {
+  it("passes a trusted configured origin and validated body fields to the service", async () => {
     jest.mocked(createVtoTask).mockResolvedValue({ taskId: "task-1", status: "pending" });
     const response = await POST(request({ trendId: "chunky-platform-loafer", gender: "female" }));
-    expect(createVtoTask).toHaveBeenCalledWith("chunky-platform-loafer", "http://app.test", "female");
+    expect(createVtoTask).toHaveBeenCalledWith("chunky-platform-loafer", "https://trusted.test", "female");
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ data: { taskId: "task-1", status: "pending" } });
   });
@@ -46,7 +49,7 @@ describe("POST /api/vto-tasks", () => {
   it("omits gender when the client sends none", async () => {
     jest.mocked(createVtoTask).mockResolvedValue({ taskId: "task-1", status: "pending" });
     await POST(request({ trendId: "chunky-platform-loafer" }));
-    expect(createVtoTask).toHaveBeenCalledWith("chunky-platform-loafer", "http://app.test", undefined);
+    expect(createVtoTask).toHaveBeenCalledWith("chunky-platform-loafer", "https://trusted.test", undefined);
   });
 
   it.each([
@@ -65,6 +68,20 @@ describe("POST /api/vto-tasks", () => {
   it("rejects a missing or malformed trendId before calling the service", async () => {
     const response = await POST(request({}));
     expect(response.status).toBe(400);
+    expect(createVtoTask).not.toHaveBeenCalled();
+  });
+
+  it("rejects a gender outside the supported enum before calling the service", async () => {
+    const response = await POST(request({ trendId: "chunky-platform-loafer", gender: "invalid" }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual(expect.objectContaining({ error: expect.objectContaining({ code: "invalid_gender" }) }));
+    expect(createVtoTask).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized JSON body before parsing or calling the service", async () => {
+    const response = await POST(request({ trendId: "x".repeat(17_000) }));
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual(expect.objectContaining({ error: expect.objectContaining({ code: "payload_too_large" }) }));
     expect(createVtoTask).not.toHaveBeenCalled();
   });
 });

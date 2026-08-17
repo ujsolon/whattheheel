@@ -37,4 +37,12 @@ describe("StylistPage gating", () => {
     await expect(StylistPage({ searchParams: Promise.resolve({}) } as never)).rejects.toThrow("redirected");
     expect(redirect).toHaveBeenCalledWith("/profile");
   });
+
+  it("preserves a valid trend when redirecting a signed-in user to upload a selfie", async () => {
+    jest.mocked(getMyProfile).mockResolvedValue({ email: "a@b.com", selfieUrl: null, updatedAt: null, gender: null });
+    await expect(
+      StylistPage({ searchParams: Promise.resolve({ trend: "chunky-platform-loafer" }) } as never),
+    ).rejects.toThrow("redirected");
+    expect(redirect).toHaveBeenCalledWith("/profile?trend=chunky-platform-loafer");
+  });
 });
