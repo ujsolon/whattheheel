@@ -4,7 +4,7 @@ baseline_commit: ec816216d63ebaaa2cdde47c2efd10c2619f7331
 
 # Story 1.2: Curated Trendsetter Feed Display
 
-Status: review
+Status: in-progress
 
 ## Story
 
