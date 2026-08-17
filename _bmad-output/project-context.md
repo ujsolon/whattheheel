@@ -48,7 +48,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Framework:** Jest and React Testing Library will be used for component testing.
 - **Test Location:** Test files will be co-located with the source code in a `__tests__` directory.
 - **File Naming:** Test files must be named with the `.test.tsx` suffix (e.g., `MyComponent.test.tsx`).
-- **Basic Tests:** Every new component should have a basic test that checks if it renders without crashing.
+- **Basic Tests:** Every synchronous component should have a basic Jest/React Testing Library test that checks whether it renders without crashing. Async Server Components receive E2E coverage instead; extract synchronous presentational children for focused Jest/RTL coverage where useful.
 
 ### Code Quality & Style Rules
 - **Linting:** The project enforces the `eslint-config-next` rules. Ensure all code passes the linter by running `npm run lint`.

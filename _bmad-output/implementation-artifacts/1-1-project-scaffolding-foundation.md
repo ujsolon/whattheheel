@@ -4,7 +4,7 @@ baseline_commit: NO_VCS
 
 # Story 1.1: Project Scaffolding & Foundation
 
-Status: review
+Status: done
 
 ## Story
 
@@ -36,6 +36,15 @@ so that feature stories have a working, architecturally compliant foundation.
 - [x] Verify the foundation (AC: 4–5)
   - [x] Run lint and tests successfully.
   - [x] Start the development server and verify a successful root-page response without build/runtime errors.
+
+### Review Findings
+
+- [x] [Review][Patch] Document the selected testing policy: async Server Components receive E2E coverage; synchronous components and extracted presentational children receive Jest/RTL render-smoke tests. [_bmad-output/project-context.md:51]
+- [x] [Review][Patch] Add the missing `RootLayout` render-smoke test required for every newly introduced component. [app/layout.tsx:9]
+- [x] [Review][Patch] Make the global color foundation dark-only instead of defaulting to light colors for light-mode users. [app/globals.css:3]
+- [x] [Review][Patch] Align `@types/node` with the Node 24 runtime contract. [package.json:27]
+- [x] [Review][Patch] Allow a safe `.env.example` template to be committed despite the `.env*` ignore rule. [.gitignore:34]
+- [x] [Review][Patch] Complete the story File List with all scaffold/configuration files introduced by Story 1.1. [_bmad-output/implementation-artifacts/1-1-project-scaffolding-foundation.md:125]
 
 ## Dev Notes
 
@@ -120,26 +129,44 @@ Codex (GPT-5.6 Terra)
 - Added the Node 24 engine contract and the Route Handler/Service/Data/External foundation directories without installing future feature integrations.
 - Configured Jest 30 and React Testing Library with a co-located root-page smoke test.
 - Removed the generated remote-font dependency so builds are deterministic without internet access.
-- Validation passed: lint, 1/1 Jest test, production build/type checking, required-directory checks, and live `GET /` HTTP 200.
+- Validation passed: lint, 2/2 Jest tests, production build/type checking, required-directory checks, and live `GET /` HTTP 200.
+- Code review patches completed: async-component testing policy documented, RootLayout test added, dark-only global colors enforced, Node 24 types aligned, `.env.example` allowed, and file traceability completed.
 
 ### File List
 
+- `.gitignore`
+- `AGENTS.md`
+- `CLAUDE.md`
+- `README.md`
 - `_bmad-output/implementation-artifacts/1-1-project-scaffolding-foundation.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/project-context.md`
+- `app/__tests__/layout.test.tsx`
 - `app/__tests__/page.test.tsx`
 - `app/api/.gitkeep`
 - `app/components/.gitkeep`
+- `app/favicon.ico`
 - `app/globals.css`
 - `app/layout.tsx`
 - `app/page.tsx`
+- `eslint.config.mjs`
 - `jest.config.ts`
 - `jest.setup.ts`
 - `lib/data/.gitkeep`
 - `lib/external/.gitkeep`
 - `lib/services/.gitkeep`
+- `next.config.ts`
 - `package-lock.json`
 - `package.json`
+- `postcss.config.mjs`
+- `public/file.svg`
+- `public/globe.svg`
+- `public/next.svg`
+- `public/vercel.svg`
+- `public/window.svg`
+- `tsconfig.json`
 
 ## Change Log
 
 - 2026-08-17: Implemented and validated the Next.js foundation; story advanced to review.
+- 2026-08-17: Applied all six code-review patches and advanced the story to done.
