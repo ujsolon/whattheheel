@@ -1,0 +1,39 @@
+# generated: 2026-08-17
+# last_updated: 2026-08-17
+# project: whattheheel
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: C:\Users\yujey\Documents\whattheheel\_bmad-output\implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic: backlog -> in-progress -> done
+# Story: backlog -> ready-for-dev -> in-progress -> review -> done
+# Retrospective: optional <-> done
+#
+# WORKFLOW NOTES:
+# ===============
+# - An epic becomes in-progress when its first story is created.
+# - A story file raises that story to ready-for-dev.
+# - Development should move a story through review before it is done.
+
+generated: 2026-08-17
+last_updated: 2026-08-17
+project: whattheheel
+project_key: NOKEY
+tracking_system: file-system
+story_location: C:\Users\yujey\Documents\whattheheel\_bmad-output\implementation-artifacts
+
+development_status:
+  epic-1: in-progress
+  1-1-project-scaffolding-foundation: in-progress
+  1-2-curated-trendsetter-feed-display: backlog
+  1-3-anonymous-manual-overlay-preview: backlog
+  epic-1-retrospective: optional
+  epic-2: backlog
+  2-1-user-registration-login: backlog
+  2-2-selfie-capture-profile-storage: backlog
+  2-3-ai-virtual-try-on-generation: backlog
+  2-4-vto-failure-handling: backlog
+  2-5-retail-buy-now-links: backlog
+  epic-2-retrospective: optional
