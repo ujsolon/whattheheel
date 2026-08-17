@@ -1,6 +1,7 @@
+import Link from "next/link";
 const navigationItems = ["Feed", "AI Stylist", "Profile"] as const;
 
-export function AppNavigation() {
+export function AppNavigation({ current = "Feed" }: { current?: (typeof navigationItems)[number] }) {
   return (
     <nav
       aria-label="Primary"
@@ -12,7 +13,7 @@ export function AppNavigation() {
         </span>
         <ul className="grid min-w-0 w-full grid-cols-3 gap-2 py-2 lg:w-auto lg:min-w-[28rem] lg:py-0">
           {navigationItems.map((item) => {
-            const isCurrent = item === "Feed";
+            const isCurrent = item === current;
 
             return (
               <li key={item} className="min-w-0">
@@ -23,6 +24,10 @@ export function AppNavigation() {
                   >
                     {item}
                   </span>
+                ) : item === "Profile" ? (
+                  <Link href="/profile" className="flex min-h-11 items-center justify-center border-[3px] border-ink bg-ink px-2 text-center text-xs font-black uppercase text-lime focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime sm:text-sm">Profile</Link>
+                ) : item === "Feed" ? (
+                  <Link href="/" className="flex min-h-11 items-center justify-center border-[3px] border-ink bg-ink px-2 text-center text-xs font-black uppercase text-lime focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime sm:text-sm">Feed</Link>
                 ) : (
                   <button
                     type="button"

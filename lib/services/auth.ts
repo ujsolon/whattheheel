@@ -81,7 +81,48 @@ export const authOptions: AuthOptions = {
       },
     }),
   ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user?.id) token.sub = user.id;
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token.sub) session.user.id = token.sub;
+      return session;
+    },
+  },
 };
+
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+}
+
+export class UnauthorizedError extends Error {
+  constructor() {
+    super("Authentication required");
+    this.name = "UnauthorizedError";
+  }
+}
+
+export async function requireAuthenticatedUser(): Promise<AuthenticatedUser> {
+  const { getServerSession } = await import("next-auth");
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || !session.user.email) throw new UnauthorizedError();
+  return { id: session.user.id, email: session.user.email };
+}
+
+export function safeCallbackUrl(value: string | null | undefined, fallback = "/"): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
+    return fallback;
+  }
+  try {
+    const parsed = new URL(value, "http://local");
+    return parsed.origin === "http://local" ? `${parsed.pathname}${parsed.search}${parsed.hash}` : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export async function registerUser(email: string, password: string): Promise<User> {
   const normalizedEmail = email.trim().toLowerCase();

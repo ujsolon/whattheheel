@@ -286,7 +286,7 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
           <div className="mt-6 border-[3px] border-ink bg-pink p-4">
             <p className="font-black uppercase">Love the direction?</p>
             <Link
-              href="/register"
+              href={`/register?callbackUrl=${encodeURIComponent(`/profile?trend=${trend.id}`)}&trend=${encodeURIComponent(trend.id)}`}
               className="mt-2 grid min-h-11 w-full place-items-center border-[3px] border-ink bg-lime px-4 font-black uppercase focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
             >
               Register to unlock the AI Stylist

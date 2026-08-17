@@ -87,7 +87,7 @@ describe("AuthForm", () => {
     expect(mockSignIn).not.toHaveBeenCalled();
   });
 
-  it("signs in immediately after a successful Sign Up, then redirects home", async () => {
+  it("signs in immediately after a successful Sign Up, then continues to Profile", async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({ data: { id: "1", email: "jordan@example.com" } }),
@@ -105,7 +105,7 @@ describe("AuthForm", () => {
         password: "longenough1",
       }),
     );
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/"));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/profile"));
   });
 
   it("shows the locked mismatch copy on a failed Sign In, without calling the register endpoint", async () => {

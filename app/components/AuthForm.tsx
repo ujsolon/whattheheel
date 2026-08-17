@@ -10,7 +10,7 @@ const SIGN_IN_MISMATCH_COPY = "Email or password didn't match — try again.";
 const GENERIC_ERROR_COPY = "Something went wrong. Please try again.";
 const ACCOUNT_CREATED_COPY = "Your account was created, but we couldn't sign you in. Please sign in now.";
 
-export function AuthForm() {
+export function AuthForm({ callbackUrl = "/profile" }: { callbackUrl?: string }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("sign-up");
   const [email, setEmail] = useState("");
@@ -61,7 +61,7 @@ export function AuthForm() {
         return;
       }
 
-      router.push("/");
+      router.push(callbackUrl);
     } catch (submissionError) {
       console.error("Authentication submission failed", submissionError);
       setError(GENERIC_ERROR_COPY);

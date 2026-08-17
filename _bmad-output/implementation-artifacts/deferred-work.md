@@ -1,5 +1,9 @@
 # Deferred Work
 
+## Deferred from: deployment setup (2026-08-17)
+
+- **GitHub-to-Vercel automatic deployment is not connected** — the initial Vercel production deployment succeeded through the authenticated CLI, but repository linking failed. Per product-owner decision, continue using deliberate CLI deployments for now and revisit automatic deployment after Epic 2 or when continuous deployment becomes operationally necessary.
+
 ## Deferred from: code review of 1-2-curated-trendsetter-feed-display (2026-08-17)
 
 - **Static prerender freezes the seed while `/trends.json` serves a live copy** (`lib/data/trends.ts:11,34`) — `readFileSync(process.cwd()/public/trends.json)` runs at build time because `/` is statically prerendered (verified: `"compute": "static"`, trend content baked into `.next/server/app/index.html`). Editing the seed in production updates the publicly-served `/trends.json` URL instantly and the rendered feed not at all, until a rebuild. Correct-by-accident for a hand-curated hackathon seed. Becomes a live bug the moment the route turns dynamic: `public/` is CDN-served and is not guaranteed present at `process.cwd()` inside a serverless function, so the read would fail at request time and every user would see the "No trends right now" empty state. Fix when it matters: static `import` of the JSON, or `outputFileTracingIncludes` in `next.config.ts`.
@@ -11,6 +15,12 @@
 - **Loading skeleton drifts from card geometry and the design token** (`app/loading.tsx`) — deferred because `loading.tsx` is deliberately unreachable scaffolding (above); polishing it now is premature, but it **must be fixed before Story 1.3 makes the boundary reachable**. Four mismatches: 8 skeletons vs 3 seed entries; `aspect-[4/5]` vs the real card's `aspect-square` image plus `min-h-16` label bar; `repeating-linear-gradient(135deg,#151515…#242424)` dark stripes vs DESIGN.md's `trend-card-loading` light shimmer (`110deg, #E7E7E7 0 10px, #D2D2D2 10px 20px`); and no `AppNavigation`/`Marquee`, so nav and ticker would pop in on transition. `#242424` appears nowhere in the DESIGN.md palette.
 
 - **`lg:sticky` leaves `bottom-0` unreset** (`app/components/AppNavigation.tsx:7`) — cosmetic robustness. The class list is `fixed inset-x-0 bottom-0 … lg:sticky lg:top-0`; the responsive variants override `position` and border sides but never reset `bottom`. A sticky box with both `top` and `bottom` set is a fragile construction; `lg:bottom-auto` should be explicit. Verified rendering acceptably at 1440×1000 today, so no user impact currently. *(Note: current `AppNavigation.tsx` now shows `lg:bottom-auto` explicitly present — appears already resolved by a later change; re-verify before acting.)*
+
+## Deferred from: Story 2.2 planning (2026-08-17)
+
+- **Authenticated Cloudinary asset can be orphaned after a dual-write failure** (`lib/services/profile.ts`, planned) — if MongoDB profile persistence fails and every bounded compensating Cloudinary deletion attempt also fails, the new opaque authenticated asset cannot be durably queued because Story 2.2 may create only `user_profiles` and MongoDB is unavailable. Story 2.2 accepts this bounded operational risk for the free-tier hackathon deployment: emit only a sanitized high-priority correlation log and retain a dedicated opaque Cloudinary folder for manual reconciliation. Revisit with a durable outbox/reconciliation job before production scale or when another persistence mechanism is approved; do not claim exactly-once cleanup until then.
+
+- **Direct HEIC/HEIF selfie uploads are deferred** (`lib/services/imageValidation.ts`, `app/components/SelfieUploadForm.tsx`) — the standard Sharp/Vercel runtime cannot decode HEVC-backed HEIC without a custom libvips build. The maintained `heic-to@1.5.2` candidate uses patched libheif 1.22.2 but requires browser Workers and fails in the authoritative Node validation boundary; older Node-compatible libheif-js builds are affected by CVE-2026-32814. Product-owner decision: ship server-validated JPEG/PNG uploads for the hackathon. Users with iPhone HEIC photos must export or convert to JPEG first. Restore HEIC only with a patched, Vercel-compatible server decoder or a separately approved image-processing service, plus a genuine HEVC fixture and deployment-runtime proof.
 
 ## Deferred from: code review of 1-3-anonymous-manual-overlay-preview (2026-08-17)
 

@@ -9,7 +9,6 @@ describe("AppNavigation", () => {
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
     expect(screen.getByText("Feed")).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("button", { name: "AI Stylist (coming soon)" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Profile (coming soon)" })).toBeDisabled();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute("href", "/profile");
   });
 });

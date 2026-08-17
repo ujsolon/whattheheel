@@ -197,7 +197,7 @@ describe("OverlayCanvas", () => {
     expect(screen.getByLabelText("Rotation: 45°")).toHaveValue("45");
     expect(screen.getByRole("link", { name: "Register to unlock the AI Stylist" })).toHaveAttribute(
       "href",
-      "/register",
+      "/register?callbackUrl=%2Fprofile%3Ftrend%3Dloafer&trend=loafer",
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
@@ -205,7 +205,7 @@ describe("OverlayCanvas", () => {
     expect(screen.getByLabelText("Rotation: 0°")).toHaveValue("0");
     expect(screen.getByRole("link", { name: "Register to unlock the AI Stylist" })).toHaveAttribute(
       "href",
-      "/register",
+      "/register?callbackUrl=%2Fprofile%3Ftrend%3Dloafer&trend=loafer",
     );
   });
 
@@ -238,7 +238,7 @@ describe("OverlayCanvas", () => {
 
     expect(
       screen.getByRole("link", { name: "Register to unlock the AI Stylist" }),
-    ).toHaveAttribute("href", "/register");
+    ).toHaveAttribute("href", "/register?callbackUrl=%2Fprofile%3Ftrend%3Dloafer&trend=loafer");
   });
 
   it("accumulates keyboard updates dispatched in the same render batch", () => {
