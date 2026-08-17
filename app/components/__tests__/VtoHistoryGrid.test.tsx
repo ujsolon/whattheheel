@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { VtoHistoryGrid } from "@/app/components/VtoHistoryGrid";
 
 describe("VtoHistoryGrid", () => {
@@ -25,13 +25,26 @@ describe("VtoHistoryGrid", () => {
     expect(screen.getByText("Classic Stiletto")).toBeInTheDocument();
   });
 
-  it("renders no interactive wrapper around any tile (view-only, AC4)", () => {
+  it("opens the full-image viewer for a tile on click (Story 2.7 — amends Story 2.6's view-only AC4)", () => {
     render(
       <VtoHistoryGrid
         items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z" }]}
       />,
     );
-    expect(screen.queryAllByRole("link")).toHaveLength(0);
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Chunky Platform Loafer/i }));
+    expect(screen.getByRole("dialog", { name: "Full view: Chunky Platform Loafer" })).toBeInTheDocument();
+  });
+
+  it("returns focus to the originating tile when the viewer closes", () => {
+    render(
+      <VtoHistoryGrid
+        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z" }]}
+      />,
+    );
+    const tile = screen.getByRole("button", { name: /Chunky Platform Loafer/i });
+    fireEvent.click(tile);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(tile).toHaveFocus();
   });
 });

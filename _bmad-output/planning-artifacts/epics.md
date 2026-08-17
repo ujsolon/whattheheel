@@ -301,3 +301,27 @@ So that I can revisit looks I've already generated without re-running them.
 **Given** the history grid
 **When** rendered
 **Then** it is view-only — no delete/remove action and no re-trigger/detail interaction (both explicitly deferred; this story is scoped to display only)
+
+### Story 2.7: VTO History Full-Image Viewer
+
+> Added 2026-08-17, post-launch — a direct follow-on to Story 2.6, requested once the history grid was live. Amends Story 2.6's AC4 ("no detail interaction") — tapping a tile is no longer a no-op.
+
+As a registered user viewing my Past Try-Ons history,
+I want to tap a result to see it full-size with zoom,
+So that I can actually inspect the details of a look I generated earlier, not just a small thumbnail.
+
+**Acceptance Criteria:**
+
+**Given** the "Past Try-Ons" grid (Story 2.6)
+**When** a user taps/clicks a tile
+**Then** that result opens full-size in a full-screen viewer over the current screen — not a page navigation, no data re-fetch, the same signed URL the grid already has
+
+**Given** the full-size viewer is open
+**When** the user pinches (touch) or uses a visible zoom control (mouse/keyboard)
+**Then** the image zooms in/out smoothly, matching the discrete-step-fallback rule already established for `OverlayCanvas.tsx` (no gesture-only control)
+
+**Given** the full-size viewer is open
+**When** the user presses Escape, taps a close control, or taps outside the image
+**Then** the viewer closes, zoom resets, and focus returns to the tile that opened it
+
+**And** no new backend work, data fetch, or route is needed — client-side only, reusing the `resultUrl` the grid already has in memory
