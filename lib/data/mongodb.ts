@@ -40,14 +40,20 @@ function getClientPromise(): Promise<MongoClient> {
     // Cache on globalThis so Next.js hot-reload does not spawn a fresh
     // MongoClient (and connection pool) on every module reload.
     if (!global.__mongoClientPromise) {
-      global.__mongoClientPromise = createClientPromise();
+      global.__mongoClientPromise = createClientPromise().catch((error) => {
+        global.__mongoClientPromise = undefined;
+        throw error;
+      });
     }
 
     return global.__mongoClientPromise;
   }
 
   if (!clientPromise) {
-    clientPromise = createClientPromise();
+    clientPromise = createClientPromise().catch((error) => {
+      clientPromise = undefined;
+      throw error;
+    });
   }
 
   return clientPromise;

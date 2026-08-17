@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function RegisterPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col justify-center px-4 py-16">
-      <h1 className="mb-6 text-2xl font-black uppercase tracking-[-0.02em] text-white">
+      <h1 className="mb-6 text-2xl font-black text-white">
         Unlock the AI Stylist
       </h1>
       <AuthForm />

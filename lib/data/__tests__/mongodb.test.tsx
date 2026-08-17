@@ -51,6 +51,20 @@ describe("getDb", () => {
     expect(connect).toHaveBeenCalledTimes(1);
   });
 
+  it("retries after a transient connection rejection", async () => {
+    process.env.MONGODB_URI = "mongodb://localhost:27017";
+    process.env.MONGODB_DB_NAME = "whattheheel_dev";
+    connect
+      .mockRejectedValueOnce(new Error("temporary outage"))
+      .mockResolvedValueOnce({ db: jest.fn().mockReturnValue("recovered-db") });
+
+    const { getDb } = await import("@/lib/data/mongodb");
+
+    await expect(getDb()).rejects.toThrow("temporary outage");
+    await expect(getDb()).resolves.toBe("recovered-db");
+    expect(MockMongoClient).toHaveBeenCalledTimes(2);
+  });
+
   it("selects the database using MONGODB_DB_NAME", async () => {
     process.env.MONGODB_URI = "mongodb://localhost:27017";
     process.env.MONGODB_DB_NAME = "whattheheel_dev";

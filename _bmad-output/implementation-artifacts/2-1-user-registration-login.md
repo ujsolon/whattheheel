@@ -4,7 +4,7 @@ baseline_commit: dc42dbaaa699fb1ff3843138e695fad66019546d
 
 # Story 2.1: User Registration & Login
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -54,6 +54,24 @@ so that I can access the premium AI Stylist experience.
   - [x] Component-test `AuthForm.tsx`: toggle switches the visible form, submit disables + shows in-progress copy, error renders the exact locked strings, labels/inputs are correctly associated, focus ring is visible on keyboard focus.
   - [x] Do not unit-test the NextAuth route handler itself or `app/register/page.tsx`'s server rendering directly — both are thin/async boundaries; cover them with the live `npm run dev` smoke check instead, per the project's async-Server-Component testing policy.
   - [x] Run `npm test`, `npm run lint`, `npm run build`, and a live `npm run dev` smoke check: register a new account (verify redirect + a working session), attempt the same email again (verify AC3 copy, no duplicate document), sign in with the wrong password (verify AC4's generic copy), sign in correctly (verify session). *(Full live HTTP round-trip completed against the real MongoDB Atlas cluster — see Debug Log for the exact results and the one infra issue hit along the way.)*
+
+### Review Findings
+
+- [x] [Review][Patch] **Public registration has no abuse throttling** — add MongoDB-backed throttling so unauthenticated callers cannot repeatedly force bcrypt hashing and user-collection work across serverless instances. Keep MongoDB access inside `lib/data/*`, expose the decision through the service layer, and return a stable retryable HTTP outcome. [app/api/auth/register/route.ts:20]
+- [x] [Review][Patch] **MongoDB caches a rejected connection forever** — both development and production retain the rejected connection promise, so one transient Atlas failure makes every later database request fail until process restart. Clear the appropriate cached promise on rejection and test recovery. [lib/data/mongodb.ts:30-50]
+- [x] [Review][Patch] **Registration accepts passwords beyond bcrypt's 72-byte boundary** — only minimum character length is enforced, allowing distinct long UTF-8 passwords with the same first 72 bytes to authenticate identically. Enforce a 72-byte maximum before hashing and cover multibyte input. [lib/services/auth.ts:64]
+- [x] [Review][Patch] **Registration parses unbounded public request bodies and fields** — `request.json()` runs before any payload limit and email/password have no upper bounds, exposing an unauthenticated endpoint to unnecessary memory/CPU/database load. Add content-length/body/field bounds and tests. [app/api/auth/register/route.ts:6, lib/services/auth.ts:59]
+- [x] [Review][Patch] **Unknown-email authorization skips bcrypt work** — unknown users return before `bcrypt.compare`, while wrong-password users incur bcrypt cost, creating a timing side channel despite identical UI copy. Compare against a valid dummy hash on the missing-user path. [lib/services/auth.ts:41-48]
+- [x] [Review][Patch] **Auth dependency failures escape `authorize()`** — rejected MongoDB lookups or bcrypt comparisons throw even though the story requires every authorization failure path to return `null`. Log safely and return `null`; add rejection-path tests. [lib/services/auth.ts:41-48]
+- [x] [Review][Patch] **Auth form promise rejections produce no inline recovery** — `handleSubmit` has `try/finally` but no `catch`; rejected `fetch`/`signIn` calls become unhandled and `GENERIC_ERROR_COPY` is never used. Catch, log, show the generic inline message, and test both rejection paths. [app/components/AuthForm.tsx:32-59]
+- [x] [Review][Patch] **A failed sign-in result can redirect as success** — the client checks only `result.error`, so `{ ok: false, error: null }` falls through to `router.push("/")`. Require `result.ok === true` and add coverage. [app/components/AuthForm.tsx:51]
+- [x] [Review][Patch] **Post-registration sign-in failure strands the new account in Sign Up** — after the account is created, a resolved credentials failure shows mismatch copy but leaves Sign Up active; retrying then reports duplicate email. Switch to Sign In and explain that account creation succeeded but sign-in must be retried. [app/components/AuthForm.tsx:40-55]
+- [x] [Review][Patch] **Mode toggle remains active during submission** — users can switch mode while a request closure is in flight, making the visible mode/progress copy disagree with the operation and allowing a late redirect from the previous mode. Disable the toggle while pending and test it. [app/components/AuthForm.tsx:119-124]
+- [x] [Review][Patch] **Registration validates email before normalization** — leading/trailing whitespace is rejected even though storage and sign-in deliberately trim and lowercase the same address. Normalize once before validation and persistence. [lib/services/auth.ts:59-72]
+- [x] [Review][Patch] **Every auth lookup performs index management** — `findUserByEmail` runs `createIndex` on every sign-in, adding a database command and requiring index privileges for ordinary reads. Cache one initialization promise (with rejection recovery) or provision the index separately. [lib/data/users.ts:43-52]
+- [x] [Review][Patch] **Register Route Handler imports a data-layer error** — the HTTP boundary imports `DuplicateEmailError` directly from `lib/data/users.ts`, violating the required route → service → data dependency direction. Translate duplicate registration into a service-layer error/result consumed by the route. [app/api/auth/register/route.ts:3]
+- [x] [Review][Patch] **Submit and mode-toggle controls lack the required focus ring** — inputs have the 3px lime focus-visible treatment, but both buttons omit it, violating AC7's “any control” requirement. [app/components/AuthForm.tsx:109-124]
+- [x] [Review][Patch] **Registration screen uses hype/all-caps styling despite the plain-register contract** — the page heading, form labels, and submit action apply uppercase typography, contradicting the story's explicit sentence-case transactional styling guardrail. [app/register/page.tsx:9, app/components/AuthForm.tsx:70-111]
 
 ## Dev Notes
 

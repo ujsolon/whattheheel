@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, type Collection } from "mongodb";
 
 import { getDb } from "@/lib/data/mongodb";
 
@@ -48,10 +48,23 @@ function isDuplicateKeyError(error: unknown): boolean {
 async function getUsersCollection() {
   const db = await getDb();
   const collection = db.collection<UserDocument>("users");
-  // Idempotent: safe to call on every access, guards against a duplicate
-  // Sign Up even under a race between the pre-check and the insert below.
-  await collection.createIndex({ email: 1 }, { unique: true });
+  await ensureUsersIndex(collection);
   return collection;
+}
+
+let indexedCollection: object | undefined;
+let usersIndexPromise: Promise<unknown> | undefined;
+
+async function ensureUsersIndex(collection: Collection<UserDocument>) {
+  if (indexedCollection !== collection || !usersIndexPromise) {
+    indexedCollection = collection;
+    usersIndexPromise = collection.createIndex({ email: 1 }, { unique: true }).catch((error) => {
+      indexedCollection = undefined;
+      usersIndexPromise = undefined;
+      throw error;
+    });
+  }
+  await usersIndexPromise;
 }
 
 export async function findUserByEmail(email: string): Promise<User | null> {

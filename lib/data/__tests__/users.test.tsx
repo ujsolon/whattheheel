@@ -1,3 +1,5 @@
+export {};
+
 const findOne = jest.fn();
 const insertOne = jest.fn();
 const createIndex = jest.fn().mockResolvedValue(undefined);
@@ -27,6 +29,7 @@ describe("users data boundary", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    jest.resetModules();
     createIndex.mockResolvedValue(undefined);
     ({ createUser, findUserByEmail, DuplicateEmailError } = await import("@/lib/data/users"));
   });
@@ -66,6 +69,24 @@ describe("users data boundary", () => {
       await findUserByEmail("nobody@example.com");
 
       expect(createIndex).toHaveBeenCalledWith({ email: 1 }, { unique: true });
+    });
+
+    it("creates the unique index only once for repeated reads", async () => {
+      findOne.mockResolvedValue(null);
+
+      await findUserByEmail("first@example.com");
+      await findUserByEmail("second@example.com");
+
+      expect(createIndex).toHaveBeenCalledTimes(1);
+    });
+
+    it("retries index initialization after a transient failure", async () => {
+      findOne.mockResolvedValue(null);
+      createIndex.mockRejectedValueOnce(new Error("no privileges")).mockResolvedValueOnce("email_1");
+
+      await expect(findUserByEmail("first@example.com")).rejects.toThrow("no privileges");
+      await expect(findUserByEmail("second@example.com")).resolves.toBeNull();
+      expect(createIndex).toHaveBeenCalledTimes(2);
     });
   });
 

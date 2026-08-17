@@ -30,6 +30,10 @@ describe("AuthForm", () => {
     expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
     expect(screen.getByRole("button", { name: "Sign Up" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign Up" })).toHaveClass("focus-visible:outline-3");
+    expect(screen.getByRole("button", { name: /already have an account/i })).toHaveClass(
+      "focus-visible:outline-3",
+    );
   });
 
   it("toggles to Sign In mode and back", () => {
@@ -130,8 +134,57 @@ describe("AuthForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
 
     expect(await screen.findByRole("button", { name: "Signing you in…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /need an account/i })).toBeDisabled();
 
     resolveSignIn({ error: null, ok: true });
     await waitFor(() => expect(mockPush).toHaveBeenCalled());
+  });
+
+  it.each(["sign-up", "sign-in"])("shows a generic inline error when %s rejects", async (mode) => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    if (mode === "sign-up") {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error("offline"));
+    } else {
+      mockSignIn.mockRejectedValue(new Error("offline"));
+    }
+
+    render(<AuthForm />);
+    if (mode === "sign-in") {
+      fireEvent.click(screen.getByRole("button", { name: /already have an account/i }));
+    }
+    fillForm("jordan@example.com", "longenough1");
+    fireEvent.click(screen.getByRole("button", { name: mode === "sign-up" ? "Sign Up" : "Sign In" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Something went wrong. Please try again.",
+    );
+    expect(consoleError).toHaveBeenCalledWith("Authentication submission failed", expect.any(Error));
+    consoleError.mockRestore();
+  });
+
+  it("does not redirect when signIn reports ok false without an error string", async () => {
+    mockSignIn.mockResolvedValue({ error: null, ok: false });
+    render(<AuthForm />);
+    fireEvent.click(screen.getByRole("button", { name: /already have an account/i }));
+    fillForm("jordan@example.com", "longenough1");
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Email or password didn't match — try again.",
+    );
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("switches to Sign In when account creation succeeds but immediate sign-in fails", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+    mockSignIn.mockResolvedValue({ error: "CredentialsSignin", ok: false });
+    render(<AuthForm />);
+    fillForm("jordan@example.com", "longenough1");
+    fireEvent.click(screen.getByRole("button", { name: "Sign Up" }));
+
+    expect(await screen.findByRole("form", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Your account was created, but we couldn't sign you in. Please sign in now.",
+    );
   });
 });
