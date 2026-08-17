@@ -1,0 +1,20 @@
+[
+  {
+    "id": "chunky-platform-loafer",
+    "label": "Chunky Platform Loafer",
+    "shoeImageUrl": "/trends/chunky-platform-loafer.png",
+    "buyUrl": null
+  },
+  {
+    "id": "metallic-retro-runner",
+    "label": "Metallic Retro Runner",
+    "shoeImageUrl": "/trends/metallic-retro-runner.png",
+    "buyUrl": null
+  },
+  {
+    "id": "burgundy-western-boot",
+    "label": "Burgundy Western Boot",
+    "shoeImageUrl": "/trends/burgundy-western-boot.png",
+    "buyUrl": null
+  }
+]
