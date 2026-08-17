@@ -16,5 +16,17 @@
     "label": "Burgundy Western Boot",
     "shoeImageUrl": "/trends/burgundy-western-boot.png",
     "buyUrl": null
+  },
+  {
+    "id": "blue-bow-slide-sandal",
+    "label": "Blue Bow Slide Sandal",
+    "shoeImageUrl": "/trends/blue-bow-slide-sandal.png",
+    "buyUrl": null
+  },
+  {
+    "id": "nude-mesh-slingback-heel",
+    "label": "Nude Mesh Slingback Heel",
+    "shoeImageUrl": "/trends/nude-mesh-slingback-heel.png",
+    "buyUrl": null
   }
 ]

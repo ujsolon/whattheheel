@@ -224,7 +224,7 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
                 sizes="240px"
                 priority
                 draggable={false}
-                className="pointer-events-none object-contain mix-blend-multiply"
+                className="pointer-events-none object-contain"
               />
             </div>
           </>
