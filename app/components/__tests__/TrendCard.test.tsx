@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { TrendCard } from "@/app/components/TrendCard";
 
 describe("TrendCard", () => {
-  it("renders a non-interactive shoe card with descriptive image text", () => {
+  it("links the whole shoe card to its trusted preview id", () => {
     render(
       <TrendCard
         trend={{
@@ -21,6 +21,9 @@ describe("TrendCard", () => {
         name: "Chunky Platform Loafer, product view",
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Chunky Platform Loafer/i })).toHaveAttribute(
+      "href",
+      "/preview?trend=loafer",
+    );
   });
 });

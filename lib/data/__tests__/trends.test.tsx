@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { getTrends } from "@/lib/data/trends";
+import { getTrendById, getTrends } from "@/lib/data/trends";
 
 jest.mock("node:fs", () => ({ readFileSync: jest.fn() }));
 
@@ -31,6 +31,18 @@ describe("getTrends", () => {
 
     expect(getTrends()).toHaveLength(1);
     expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("resolves a trusted trend by exact id and rejects malformed lookup ids", () => {
+    mockedReadFileSync.mockReturnValue(
+      JSON.stringify([
+        { id: "loafer", label: "Loafer", shoeImageUrl: "/trends/loafer.png", buyUrl: null },
+      ]),
+    );
+
+    expect(getTrendById("loafer")?.label).toBe("Loafer");
+    expect(getTrendById(" loafer")).toBeUndefined();
+    expect(getTrendById("")).toBeUndefined();
   });
 
   it.each(["{}", "not json"])("returns an empty collection for invalid seed %s", (seed) => {

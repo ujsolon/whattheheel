@@ -73,3 +73,11 @@ export function getTrends(): Trend[] {
     return [];
   }
 }
+
+export function getTrendById(id: string): Trend | undefined {
+  if (!isNonEmptyString(id) || id !== id.trim()) {
+    return undefined;
+  }
+
+  return getTrends().find((trend) => trend.id === id);
+}

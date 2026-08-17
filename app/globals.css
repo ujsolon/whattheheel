@@ -9,6 +9,7 @@
   --pink: #ff3ec9;
   --surface-muted: #151515;
   --surface-stripe: #242424;
+  --error: #ff4d4d;
 }
 
 @theme inline {
@@ -19,6 +20,7 @@
   --color-pink: var(--pink);
   --color-surface-muted: var(--surface-muted);
   --color-surface-stripe: var(--surface-stripe);
+  --color-error: var(--error);
   --font-sans: Arial, Helvetica, sans-serif;
   --font-mono: "Courier New", Courier, monospace;
 }

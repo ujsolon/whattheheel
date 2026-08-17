@@ -1,6 +1,10 @@
+---
+baseline_commit: dc42dbaaa699fb1ff3843138e695fad66019546d
+---
+
 # Story 1.3: Anonymous Manual Overlay Preview
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -23,39 +27,39 @@ so that I get an instant, no-signup styling preview.
 
 ## Tasks / Subtasks
 
-- [ ] Add stable feed-to-preview navigation (AC: 1, 9)
-  - [ ] Update `TrendCard` to accept or construct a direct `/preview?trend=<encoded-id>` destination and make the whole card one semantic, keyboard-accessible `next/link`; preserve its current image, label, square card design, and absence of Buy Now UI.
-  - [ ] Add `getTrendById(id)` to `lib/data/trends.ts`, reusing the existing validated seed and returning `undefined` for missing/malformed IDs without weakening current invalid-entry/duplicate handling.
-  - [ ] Add `app/preview/page.tsx` as a Server Component. Await the Next.js 16 `searchParams` promise, accept only one string `trend` value, resolve it through `getTrendById`, and pass the trusted `Trend` object into the Client Component.
-  - [ ] Render a recoverable invalid/missing-selection state with a real Feed link. Do not redirect in a loop, throw, trust arbitrary query data, or create a server/API endpoint.
-- [ ] Build the local photo lifecycle (AC: 2, 6, 8)
-  - [ ] Add `app/components/OverlayCanvas.tsx` as the smallest necessary `'use client'` boundary; keep the feed, preview page, trend reader, and navigation server/synchronous where currently applicable.
-  - [ ] Use a labelled native `<input type="file" accept="image/*">`; do not add `capture`, `MediaDevices`, a custom camera screen, drag-and-drop-only input, or Story 2.2 selfie constraints.
-  - [ ] Preview the chosen `File` with an object URL. Revoke the previous URL on replacement and the active URL on unmount; clear the input value after processing so the same file can be selected again.
-  - [ ] Treat picker cancellation as a no-op. Reject zero-byte, non-image, and decode-failed images with one inline plain-register message connected via `aria-describedby`; guard rapid selections so an older decode cannot replace a newer choice.
-  - [ ] Keep the foot photo in component memory only. Do not use `fetch`, XHR, FormData submission, local/session storage, query strings, server actions, Route Handlers, or external libraries for the photo.
-- [ ] Implement the manual composition model (AC: 3-5, 7-8)
-  - [ ] Use declarative layered DOM images with CSS transforms, not an imperative raster canvas: no export/flattening is required, and DOM layers preserve alt text, focus, responsive behavior, and testability.
-  - [ ] Store translation in normalized stage coordinates so pose survives resize/orientation changes; clamp it so part of the shoe always remains visible. Store scale/rotation with the fixed ranges above.
-  - [ ] Implement one-pointer dragging with Pointer Events and pointer capture, including `pointerup`, `pointercancel`, and lost-capture cleanup. Apply `touch-action: none` only to the manipulation stage so the surrounding page remains scrollable.
-  - [ ] Implement two-active-pointer pinch scaling without jumps when moving between one- and two-pointer states. Keep transient pointer geometry in refs and user-visible transform values in state.
-  - [ ] Add permanently visible labelled scale/rotation range inputs, ±15° rotation buttons, and Reset. Omit decorative corner handles unless they are fully functional; never render a false drag/rotate affordance.
-  - [ ] Make the stage a labelled focusable group. Arrow keys nudge translation by 2 normalized percentage points, `+`/`-` change scale by `0.05`, and `[`/`]` rotate by `15°`; Shift+Arrow may use a 5-point nudge. Do not intercept these shortcuts while a slider, input, or button owns focus.
-  - [ ] Latch `hasInteracted` only after a transform actually changes. It remains true after Reset, but a new valid photo resets transform and interaction state.
-- [ ] Apply the Overlay Preview UX contract (AC: 2, 7, 10)
-  - [ ] Empty stage: raised ink (`#151515`), square corners, 3px dashed lime border, concise photo-selection prompt. Loaded stage: remove the dashed border, let the foot photo fill the stage, and layer the selected shoe above it.
-  - [ ] Prefer transparent product imagery. If Story 1.2 retains opaque white product backgrounds after review, use a deterministic CSS blend treatment only when it improves composition; do not add ML/background removal or silently alter source files in this story.
-  - [ ] Use dark-only Tailwind v4 styling, system typography, hard-edged borders/shadows, sentence-case instructional/error copy, 44x44px controls, and the shared 3px lime `focus-visible` outline with 2px offset.
-  - [ ] Below `lg`, cap the stage/content around 480px and stack stage → controls → CTA with safe bottom padding. At `lg`, allow a wider two-pane wrapper while keeping each pane/canvas capped around 480px; do not render separate mobile and desktop Client Components.
-  - [ ] Reuse `AppNavigation` with Feed still current because Preview is a child of the Feed surface; preserve the existing fixed-mobile/sticky-desktop behavior.
-  - [ ] Show the post-interaction CTA with clear copy such as `Unlock the AI Stylist`. Story 2.1 owns registration navigation and auth; do not add NextAuth, a registration form, a broken link, `#`, or a placeholder route. Render this story's handoff as a clearly unavailable action/callout that Story 2.1 can activate without changing the transform contract.
-- [ ] Add comprehensive verification (AC: 1-10)
-  - [ ] Update existing `TrendCard` tests for the accessible preview URL while preserving image/label assertions.
-  - [ ] Add co-located Jest/RTL tests for empty/loaded states, picker cancel, invalid/decode-failed images, rapid and same-file reselection, object-URL replacement/unmount cleanup, drag/pointer-cancel, pinch, sliders/buttons, keyboard equivalence, clamping, Reset, CTA gating, and photo-replacement reset.
-  - [ ] Add data/page tests for valid, missing, repeated-array, and stale trend query values. Test that query input never becomes an image source directly.
-  - [ ] Assert preview interactions never call `fetch`, XHR, or app/external integration modules and never write photo data to storage.
-  - [ ] Browser-test or manually verify real mouse drag, touch/pinch, file chooser/decode, browser Back, refresh (trend remains; private photo resets), mobile stacked layout, desktop two-pane layout, safe-area padding, focus visibility, and that page scroll is locked only over the stage.
-  - [ ] Run `npm test -- --runInBand`, `npm run lint`, `npm run build`, and a live `/preview?trend=chunky-platform-loafer` HTTP/render smoke check after Story 1.2 review changes are integrated.
+- [x] Add stable feed-to-preview navigation (AC: 1, 9)
+  - [x] Update `TrendCard` to accept or construct a direct `/preview?trend=<encoded-id>` destination and make the whole card one semantic, keyboard-accessible `next/link`; preserve its current image, label, square card design, and absence of Buy Now UI.
+  - [x] Add `getTrendById(id)` to `lib/data/trends.ts`, reusing the existing validated seed and returning `undefined` for missing/malformed IDs without weakening current invalid-entry/duplicate handling.
+  - [x] Add `app/preview/page.tsx` as a Server Component. Await the Next.js 16 `searchParams` promise, accept only one string `trend` value, resolve it through `getTrendById`, and pass the trusted `Trend` object into the Client Component.
+  - [x] Render a recoverable invalid/missing-selection state with a real Feed link. Do not redirect in a loop, throw, trust arbitrary query data, or create a server/API endpoint.
+- [x] Build the local photo lifecycle (AC: 2, 6, 8)
+  - [x] Add `app/components/OverlayCanvas.tsx` as the smallest necessary `'use client'` boundary; keep the feed, preview page, trend reader, and navigation server/synchronous where currently applicable.
+  - [x] Use a labelled native `<input type="file" accept="image/*">`; do not add `capture`, `MediaDevices`, a custom camera screen, drag-and-drop-only input, or Story 2.2 selfie constraints.
+  - [x] Preview the chosen `File` with an object URL. Revoke the previous URL on replacement and the active URL on unmount; clear the input value after processing so the same file can be selected again.
+  - [x] Treat picker cancellation as a no-op. Reject zero-byte, non-image, and decode-failed images with one inline plain-register message connected via `aria-describedby`; guard rapid selections so an older decode cannot replace a newer choice.
+  - [x] Keep the foot photo in component memory only. Do not use `fetch`, XHR, FormData submission, local/session storage, query strings, server actions, Route Handlers, or external libraries for the photo.
+- [x] Implement the manual composition model (AC: 3-5, 7-8)
+  - [x] Use declarative layered DOM images with CSS transforms, not an imperative raster canvas: no export/flattening is required, and DOM layers preserve alt text, focus, responsive behavior, and testability.
+  - [x] Store translation in normalized stage coordinates so pose survives resize/orientation changes; clamp it so part of the shoe always remains visible. Store scale/rotation with the fixed ranges above.
+  - [x] Implement one-pointer dragging with Pointer Events and pointer capture, including `pointerup`, `pointercancel`, and lost-capture cleanup. Apply `touch-action: none` only to the manipulation stage so the surrounding page remains scrollable.
+  - [x] Implement two-active-pointer pinch scaling without jumps when moving between one- and two-pointer states. Keep transient pointer geometry in refs and user-visible transform values in state.
+  - [x] Add permanently visible labelled scale/rotation range inputs, ±15° rotation buttons, and Reset. Omit decorative corner handles unless they are fully functional; never render a false drag/rotate affordance.
+  - [x] Make the stage a labelled focusable group. Arrow keys nudge translation by 2 normalized percentage points, `+`/`-` change scale by `0.05`, and `[`/`]` rotate by `15°`; Shift+Arrow may use a 5-point nudge. Do not intercept these shortcuts while a slider, input, or button owns focus.
+  - [x] Latch `hasInteracted` only after a transform actually changes. It remains true after Reset, but a new valid photo resets transform and interaction state.
+- [x] Apply the Overlay Preview UX contract (AC: 2, 7, 10)
+  - [x] Empty stage: raised ink (`#151515`), square corners, 3px dashed lime border, concise photo-selection prompt. Loaded stage: remove the dashed border, let the foot photo fill the stage, and layer the selected shoe above it.
+  - [x] Prefer transparent product imagery. If Story 1.2 retains opaque white product backgrounds after review, use a deterministic CSS blend treatment only when it improves composition; do not add ML/background removal or silently alter source files in this story.
+  - [x] Use dark-only Tailwind v4 styling, system typography, hard-edged borders/shadows, sentence-case instructional/error copy, 44x44px controls, and the shared 3px lime `focus-visible` outline with 2px offset.
+  - [x] Below `lg`, cap the stage/content around 480px and stack stage → controls → CTA with safe bottom padding. At `lg`, allow a wider two-pane wrapper while keeping each pane/canvas capped around 480px; do not render separate mobile and desktop Client Components.
+  - [x] Reuse `AppNavigation` with Feed still current because Preview is a child of the Feed surface; preserve the existing fixed-mobile/sticky-desktop behavior.
+  - [x] Show the post-interaction CTA with clear copy such as `Unlock the AI Stylist`. Story 2.1 owns registration navigation and auth; do not add NextAuth, a registration form, a broken link, `#`, or a placeholder route. Render this story's handoff as a clearly unavailable action/callout that Story 2.1 can activate without changing the transform contract.
+- [x] Add comprehensive verification (AC: 1-10)
+  - [x] Update existing `TrendCard` tests for the accessible preview URL while preserving image/label assertions.
+  - [x] Add co-located Jest/RTL tests for empty/loaded states, picker cancel, invalid/decode-failed images, rapid and same-file reselection, object-URL replacement/unmount cleanup, drag/pointer-cancel, pinch, sliders/buttons, keyboard equivalence, clamping, Reset, CTA gating, and photo-replacement reset.
+  - [x] Add data/page tests for valid, missing, repeated-array, and stale trend query values. Test that query input never becomes an image source directly.
+  - [x] Assert preview interactions never call `fetch`, XHR, or app/external integration modules and never write photo data to storage.
+  - [x] Browser-test or manually verify real mouse drag, touch/pinch, file chooser/decode, browser Back, refresh (trend remains; private photo resets), mobile stacked layout, desktop two-pane layout, safe-area padding, focus visibility, and that page scroll is locked only over the stage.
+  - [x] Run `npm test -- --runInBand`, `npm run lint`, `npm run build`, and a live `/preview?trend=chunky-platform-loafer` HTTP/render smoke check after Story 1.2 review changes are integrated.
 
 ## Dev Notes
 
@@ -184,12 +188,40 @@ Codex (GPT-5.6)
 
 ### Debug Log References
 
+- 2026-08-17: Confirmed feed-to-preview RED tests failed before adding the link, lookup helper, and route.
+- 2026-08-17: Strict TypeScript required explicit `undefined` initializers for React 19 refs.
+- 2026-08-17: A transient full-suite failure came from concurrent Story 2.1 test creation; reran after its matching module landed and all suites passed.
+
+### Implementation Plan
+
+- Resolve only stable trend IDs on the server and pass the trusted seed record into one interactive client boundary.
+- Keep private photos in object URLs with decode sequencing and deterministic revocation.
+- Model transforms as clamped normalized state, with Pointer Events, sliders/buttons, and equivalent stage keyboard controls.
+- Verify state orchestration in Jest/RTL and responsive presentation in the installed headless browser without adding dependencies.
+
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Added an encoded, accessible feed-card link and a request-time preview route with recoverable invalid-selection handling.
+- Added a browser-memory-only photo lifecycle with cancellation, validation, decode-race protection, same-file reselection, and object URL cleanup.
+- Added clamped drag, pinch, slider, button, keyboard, Reset, and latched CTA behavior in a single responsive client component.
+- Verified 14 Jest suites / 51 tests, ESLint, strict production build, live HTTP 200 rendering, and mobile/desktop browser layouts.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/1-3-anonymous-manual-overlay-preview.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `app/components/AppNavigation.tsx`
+- `app/components/OverlayCanvas.tsx`
+- `app/components/TrendCard.tsx`
+- `app/components/__tests__/OverlayCanvas.test.tsx`
+- `app/components/__tests__/TrendCard.test.tsx`
+- `app/preview/page.tsx`
+- `app/preview/__tests__/page.test.tsx`
+- `lib/data/trends.ts`
+- `lib/data/__tests__/trends.test.tsx`
 
 ## Change Log
 
 - 2026-08-17: Created comprehensive implementation context and advanced the story to ready-for-dev.
+- 2026-08-17: Implemented anonymous manual overlay preview and advanced the story to review.
