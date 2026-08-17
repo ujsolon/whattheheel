@@ -32,3 +32,6 @@
 - **`getTrendById` re-reads and re-parses the entire seed on every call** (`lib/data/trends.ts:77-83`) — duplicates `getTrends()`'s work (including re-logging validation warnings) instead of caching; performance/cleanliness, not correctness.
 - **X/Y translate position has no accessible or visible readout** (`app/components/OverlayCanvas.tsx`) — Scale and Rotation both get live labelled values; position (adjustable via drag and arrow keys) does not. Beyond the stated AC, but a real a11y parity gap worth a follow-up pass.
 - **Unrelated `AppNavigation` layout changes bundled into the 1.3 diff** (`app/components/AppNavigation.tsx`) — `overflow-hidden`, `min-w-0`, padding/leading tweaks with no stated connection to the overlay-preview story. Tests were updated to match (so likely intentional), but the reason isn't documented anywhere — informational only, no user impact found.
+## Deferred from: code review of 2-3-ai-virtual-try-on-generation (2026-08-17)
+
+- Orphan-task handling after YouCam accepts a billable task but Mongo persistence fails. Accepted for hackathon scope due to low expected volume, disproportionate reconciliation complexity, and limited time before submission. A future production-hardening pass should introduce durable initiation/idempotency or reconciliation.
