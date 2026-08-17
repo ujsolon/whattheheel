@@ -21,7 +21,7 @@ describe("TrendCard", () => {
         name: "Chunky Platform Loafer, product view",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Chunky Platform Loafer/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Chunky Platform Loafer" })).toHaveAttribute(
       "href",
       "/preview?trend=loafer",
     );

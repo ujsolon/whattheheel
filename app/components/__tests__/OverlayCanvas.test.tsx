@@ -31,10 +31,12 @@ describe("OverlayCanvas", () => {
       configurable: true,
       value: class extends MouseEvent {
         pointerId: number;
+        pointerType: string;
 
         constructor(type: string, init: PointerEventInit = {}) {
           super(type, init);
           this.pointerId = init.pointerId ?? 0;
+          this.pointerType = init.pointerType ?? "";
         }
       },
     });
@@ -115,9 +117,28 @@ describe("OverlayCanvas", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
 
     choose(new File([], "empty.png", { type: "image/png" }));
-    expect(screen.getByText("Choose an image file your browser can display.")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Choose an image file your browser can display.",
+    );
+    expect(screen.getByRole("alert")).toHaveClass("text-error");
     choose(new File(["text"], "notes.txt", { type: "text/plain" }));
     expect(createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it("handles object URL creation failures as an inline validation error", () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    createObjectURL.mockImplementationOnce(() => {
+      throw new Error("object URLs unavailable");
+    });
+    render(<OverlayCanvas trend={trend} />);
+
+    choose(new File(["photo"], "foot.png", { type: "image/png" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Choose an image file your browser can display.",
+    );
+    expect(decoders).toHaveLength(0);
+    expect(consoleError).toHaveBeenCalled();
   });
 
   it("shows a decoded local photo, supports same-file selection, and never uses network or storage", () => {
@@ -131,6 +152,10 @@ describe("OverlayCanvas", () => {
     expect(screen.getByRole("img", { name: "Your selected foot" })).toHaveAttribute(
       "src",
       "blob:foot.png:0",
+    );
+    expect(screen.getByRole("img", { name: "Your selected foot" })).toHaveAttribute(
+      "draggable",
+      "false",
     );
 
     choose(new File(["photo"], "foot.png", { type: "image/png" }));
@@ -190,8 +215,36 @@ describe("OverlayCanvas", () => {
     expect(screen.getByLabelText("Rotation: 15°")).toHaveValue("15");
     expect(screen.getByTestId("shoe-overlay")).toHaveStyle({ left: "95%" });
 
-    fireEvent.keyDown(screen.getByLabelText(/Scale:/), { key: "+" });
+    fireEvent.keyDown(screen.getByRole("img", { name: "Your selected foot" }), { key: "+" });
     expect(screen.getByLabelText("Scale: 1.05")).toHaveValue("1.05");
+  });
+
+  it("accumulates keyboard updates dispatched in the same render batch", () => {
+    render(<OverlayCanvas trend={trend} />);
+    loadPhoto();
+    const stage = screen.getByRole("group", { name: "Shoe overlay stage" });
+
+    act(() => {
+      stage.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+      stage.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+    });
+
+    expect(screen.getByTestId("shoe-overlay")).toHaveStyle({ left: "54%" });
+  });
+
+  it("leaves browser shortcuts alone when a transform key has a modifier", () => {
+    render(<OverlayCanvas trend={trend} />);
+    loadPhoto();
+    const stage = screen.getByRole("group", { name: "Shoe overlay stage" });
+    const shortcut = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+      key: "+",
+    });
+
+    expect(stage.dispatchEvent(shortcut)).toBe(true);
+    expect(screen.getByLabelText("Scale: 1.00")).toHaveValue("1");
   });
 
   it("supports pointer drag, cancellation, and two-pointer pinch", () => {
@@ -208,6 +261,66 @@ describe("OverlayCanvas", () => {
     fireEvent.pointerDown(stage, { pointerId: 3, clientX: 200, clientY: 100 });
     fireEvent.pointerMove(stage, { pointerId: 3, clientX: 300, clientY: 100 });
     expect(Number((screen.getByLabelText(/Scale:/) as HTMLInputElement).value)).toBeGreaterThan(1);
+  });
+
+  it("accumulates fast drag events and ignores non-primary mouse drags", () => {
+    render(<OverlayCanvas trend={trend} />);
+    loadPhoto();
+    const stage = screen.getByRole("group", { name: "Shoe overlay stage" });
+
+    fireEvent.pointerDown(stage, {
+      button: 2,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 9,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerMove(stage, { clientX: 180, clientY: 100, pointerId: 9 });
+    expect(screen.getByTestId("shoe-overlay")).toHaveStyle({ left: "50%" });
+
+    fireEvent.pointerDown(stage, { clientX: 100, clientY: 100, pointerId: 1 });
+    act(() => {
+      stage.dispatchEvent(
+        new PointerEvent("pointermove", {
+          bubbles: true,
+          clientX: 140,
+          clientY: 100,
+          pointerId: 1,
+        }),
+      );
+      stage.dispatchEvent(
+        new PointerEvent("pointermove", {
+          bubbles: true,
+          clientX: 180,
+          clientY: 100,
+          pointerId: 1,
+        }),
+      );
+    });
+    expect(screen.getByTestId("shoe-overlay")).toHaveStyle({ left: "70%" });
+  });
+
+  it("recovers when a pinch starts with both pointers at the same position", () => {
+    render(<OverlayCanvas trend={trend} />);
+    loadPhoto();
+    const stage = screen.getByRole("group", { name: "Shoe overlay stage" });
+
+    fireEvent.pointerDown(stage, { pointerId: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(stage, { pointerId: 3, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(stage, { pointerId: 3, clientX: 150, clientY: 100 });
+
+    expect(Number((screen.getByLabelText(/Scale:/) as HTMLInputElement).value)).toBeGreaterThan(1);
+  });
+
+  it("caps the mobile stage and controls and removes the loaded-stage border", () => {
+    render(<OverlayCanvas trend={trend} />);
+    const stage = screen.getByRole("group", { name: "Shoe overlay stage" });
+
+    expect(stage.parentElement).toHaveClass("max-w-[30rem]");
+    expect(stage).toHaveClass("max-w-[30rem]", "border-[3px]");
+    loadPhoto();
+    expect(stage).not.toHaveClass("border-[3px]");
+    expect(screen.getByLabelText("Your foot photo").parentElement).toHaveClass("max-w-[30rem]");
   });
 
   it("resets pose and CTA when a replacement photo decodes", () => {

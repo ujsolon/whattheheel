@@ -12,6 +12,7 @@ export function TrendCard({ trend, priority = false }: TrendCardProps) {
   return (
     <Link
       href={`/preview?trend=${encodeURIComponent(trend.id)}`}
+      aria-label={trend.label}
       className="flex h-full flex-col border-[3px] border-ink bg-white text-ink shadow-[4px_4px_0_var(--color-ink)] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
     >
       <div className="relative aspect-square overflow-hidden bg-white">

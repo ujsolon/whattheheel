@@ -22,6 +22,8 @@ interface Point {
   y: number;
 }
 
+type PoseUpdate = Partial<Pose> | ((current: Pose) => Partial<Pose>);
+
 const DEFAULT_POSE: Pose = { x: 0, y: 0, scale: 1, rotation: 0 };
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
@@ -32,6 +34,7 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
   const [photoUrl, setPhotoUrl] = useState<string>();
   const [error, setError] = useState("");
   const [pose, setPose] = useState(DEFAULT_POSE);
+  const poseRef = useRef(DEFAULT_POSE);
   const [hasInteracted, setHasInteracted] = useState(false);
   const activeUrlRef = useRef<string | undefined>(undefined);
   const selectionRef = useRef(0);
@@ -47,14 +50,21 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
     [],
   );
 
-  const updatePose = (next: Partial<Pose>, interacted = true) => {
+  const resetPose = () => {
+    poseRef.current = DEFAULT_POSE;
+    setPose(DEFAULT_POSE);
+  };
+
+  const updatePose = (next: PoseUpdate, interacted = true) => {
     setPose((current) => {
+      const values = typeof next === "function" ? next(current) : next;
       const updated = {
-        x: clamp(next.x ?? current.x, -45, 45),
-        y: clamp(next.y ?? current.y, -45, 45),
-        scale: clamp(next.scale ?? current.scale, 0.5, 2),
-        rotation: clamp(next.rotation ?? current.rotation, -45, 45),
+        x: clamp(values.x ?? current.x, -45, 45),
+        y: clamp(values.y ?? current.y, -45, 45),
+        scale: clamp(values.scale ?? current.scale, 0.5, 2),
+        rotation: clamp(values.rotation ?? current.rotation, -45, 45),
       };
+      poseRef.current = updated;
       if (
         interacted &&
         (updated.x !== current.x ||
@@ -81,7 +91,14 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
       return;
     }
 
-    const nextUrl = URL.createObjectURL(file);
+    let nextUrl: string;
+    try {
+      nextUrl = URL.createObjectURL(file);
+    } catch (objectUrlError) {
+      console.error("Unable to preview selected photo", objectUrlError);
+      setError("Choose an image file your browser can display.");
+      return;
+    }
     const decoder = new window.Image();
     decoder.onload = () => {
       if (selection !== selectionRef.current) {
@@ -91,7 +108,7 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
       if (activeUrlRef.current) URL.revokeObjectURL(activeUrlRef.current);
       activeUrlRef.current = nextUrl;
       setPhotoUrl(nextUrl);
-      setPose(DEFAULT_POSE);
+      resetPose();
       setHasInteracted(false);
     };
     decoder.onerror = () => {
@@ -107,12 +124,13 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
     const points = [...pointersRef.current.values()];
     if (points.length === 1) lastDragRef.current = points[0];
     if (points.length === 2) {
-      pinchRef.current = { distance: distance(points[0], points[1]), scale: pose.scale };
+      pinchRef.current = { distance: distance(points[0], points[1]), scale: poseRef.current.scale };
     }
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!photoUrl) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     rebaseline();
@@ -126,14 +144,14 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
       const rect = event.currentTarget.getBoundingClientRect();
       const width = rect.width || 1;
       const height = rect.height || 1;
-      updatePose({
-        x: pose.x + ((points[0].x - lastDragRef.current.x) / width) * 100,
-        y: pose.y + ((points[0].y - lastDragRef.current.y) / height) * 100,
-      });
+      const deltaX = ((points[0].x - lastDragRef.current.x) / width) * 100;
+      const deltaY = ((points[0].y - lastDragRef.current.y) / height) * 100;
+      updatePose((current) => ({ x: current.x + deltaX, y: current.y + deltaY }));
       lastDragRef.current = points[0];
-    } else if (points.length === 2 && pinchRef.current?.distance) {
+    } else if (points.length === 2 && pinchRef.current) {
+      const baselineDistance = Math.max(pinchRef.current.distance, 1);
       updatePose({
-        scale: pinchRef.current.scale * (distance(points[0], points[1]) / pinchRef.current.distance),
+        scale: pinchRef.current.scale * (distance(points[0], points[1]) / baselineDistance),
       });
     }
   };
@@ -150,17 +168,18 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!photoUrl || event.target !== event.currentTarget) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     const amount = event.shiftKey ? 5 : 2;
-    const actions: Record<string, Partial<Pose>> = {
-      ArrowLeft: { x: pose.x - amount },
-      ArrowRight: { x: pose.x + amount },
-      ArrowUp: { y: pose.y - amount },
-      ArrowDown: { y: pose.y + amount },
-      "+": { scale: pose.scale + 0.05 },
-      "=": { scale: pose.scale + 0.05 },
-      "-": { scale: pose.scale - 0.05 },
-      "[": { rotation: pose.rotation - 15 },
-      "]": { rotation: pose.rotation + 15 },
+    const actions: Record<string, (current: Pose) => Partial<Pose>> = {
+      ArrowLeft: (current) => ({ x: current.x - amount }),
+      ArrowRight: (current) => ({ x: current.x + amount }),
+      ArrowUp: (current) => ({ y: current.y - amount }),
+      ArrowDown: (current) => ({ y: current.y + amount }),
+      "+": (current) => ({ scale: current.scale + 0.05 }),
+      "=": (current) => ({ scale: current.scale + 0.05 }),
+      "-": (current) => ({ scale: current.scale - 0.05 }),
+      "[": (current) => ({ rotation: current.rotation - 15 }),
+      "]": (current) => ({ rotation: current.rotation + 15 }),
     };
     const action = actions[event.key];
     if (action) {
@@ -170,7 +189,7 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
   };
 
   return (
-    <section className="mx-auto grid w-full min-w-0 max-w-[calc(100vw-2rem)] items-start gap-6 lg:max-w-[61rem] lg:grid-cols-2">
+    <section className="mx-auto grid w-full min-w-0 max-w-[30rem] items-start gap-6 lg:max-w-[61rem] lg:grid-cols-2">
       <div
         role="group"
         aria-label="Shoe overlay stage"
@@ -181,13 +200,13 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
         onPointerUp={finishPointer}
         onPointerCancel={finishPointer}
         onLostPointerCapture={finishPointer}
-        className={`relative aspect-square w-full min-w-0 max-w-full overflow-hidden bg-surface-muted touch-none focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime lg:max-w-[30rem] ${photoUrl ? "border-[3px] border-ink" : "border-[3px] border-dashed border-lime shadow-[4px_4px_0_var(--color-pink)]"}`}
+        className={`relative mx-auto aspect-square w-full min-w-0 max-w-[30rem] overflow-hidden bg-surface-muted touch-none focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime ${photoUrl ? "" : "border-[3px] border-dashed border-lime shadow-[4px_4px_0_var(--color-pink)]"}`}
       >
         {photoUrl ? (
           <>
             {/* Blob URLs require a native image element and never leave the browser. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photoUrl} alt="Your selected foot" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={photoUrl} alt="Your selected foot" draggable={false} className="absolute inset-0 h-full w-full object-cover" />
             <div
               data-testid="shoe-overlay"
               className="absolute left-1/2 top-1/2 h-1/2 w-1/2"
@@ -215,7 +234,7 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
         )}
       </div>
 
-      <div className="box-border w-full min-w-0 max-w-full overflow-hidden border-[3px] border-ink bg-white p-5 text-ink shadow-[4px_4px_0_var(--color-pink)] lg:max-w-[30rem]">
+      <div className="mx-auto box-border w-full min-w-0 max-w-[30rem] overflow-hidden border-[3px] border-ink bg-white p-5 text-ink shadow-[4px_4px_0_var(--color-pink)]">
         <label htmlFor="foot-photo" className="block font-black uppercase">
           Your foot photo
         </label>
@@ -228,7 +247,7 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
           className="mt-2 min-h-11 w-full min-w-0 max-w-full overflow-hidden border-[3px] border-ink p-2 file:mr-3 file:min-h-11 file:border-0 file:bg-lime file:px-3 file:font-black focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
         />
         <p id="photo-help" className="mt-2 text-sm">Your photo stays in this browser tab.</p>
-        {error && <p id="photo-error" className="mt-2 font-bold text-red-700">{error}</p>}
+        {error && <p id="photo-error" role="alert" className="mt-2 font-bold text-error">{error}</p>}
 
         <label htmlFor="overlay-scale" className="mt-6 block font-black">Scale: {pose.scale.toFixed(2)}</label>
         <input
@@ -257,9 +276,9 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
         />
 
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <button type="button" disabled={!photoUrl} onClick={() => updatePose({ rotation: pose.rotation - 15 })} className="min-h-11 border-[3px] border-ink bg-lime font-black focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime disabled:opacity-40">−15°</button>
-          <button type="button" disabled={!photoUrl} onClick={() => updatePose({ rotation: pose.rotation + 15 })} className="min-h-11 border-[3px] border-ink bg-lime font-black focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime disabled:opacity-40">+15°</button>
-          <button type="button" disabled={!photoUrl} onClick={() => setPose(DEFAULT_POSE)} className="min-h-11 border-[3px] border-ink bg-white font-black focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime disabled:opacity-40">Reset</button>
+          <button type="button" disabled={!photoUrl} onClick={() => updatePose((current) => ({ rotation: current.rotation - 15 }))} className="min-h-11 border-[3px] border-ink bg-lime font-black focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime disabled:opacity-40">−15°</button>
+          <button type="button" disabled={!photoUrl} onClick={() => updatePose((current) => ({ rotation: current.rotation + 15 }))} className="min-h-11 border-[3px] border-ink bg-lime font-black focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime disabled:opacity-40">+15°</button>
+          <button type="button" disabled={!photoUrl} onClick={resetPose} className="min-h-11 border-[3px] border-ink bg-white font-black focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime disabled:opacity-40">Reset</button>
         </div>
 
         {hasInteracted && (
