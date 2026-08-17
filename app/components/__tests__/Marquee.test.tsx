@@ -7,8 +7,11 @@ describe("Marquee", () => {
     render(<Marquee />);
 
     expect(
-      screen.getByText("NEW DROPS DAILY ★ Y2K IS BACK ★ COP BEFORE IT'S GONE"),
-    ).toBeInTheDocument();
+      screen.getAllByText("NEW DROPS DAILY ★ Y2K IS BACK ★ COP BEFORE IT'S GONE"),
+    ).toHaveLength(2);
     expect(screen.getByTestId("marquee-copy")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByTestId("marquee-copy").parentElement?.parentElement).not.toHaveAttribute(
+      "tabindex",
+    );
   });
 });

@@ -12,7 +12,7 @@ export default function Loading() {
         {Array.from({ length: 8 }, (_, index) => (
           <div
             key={index}
-            className="aspect-[4/5] animate-pulse border-[3px] border-black bg-[repeating-linear-gradient(135deg,#151515_0,#151515_12px,#242424_12px,#242424_24px)] shadow-[4px_4px_0_#0a0a0a] motion-reduce:animate-none"
+            className="aspect-[4/5] animate-pulse border-[3px] border-ink bg-[repeating-linear-gradient(135deg,var(--color-surface-muted)_0,var(--color-surface-muted)_12px,var(--color-surface-stripe)_12px,var(--color-surface-stripe)_24px)] shadow-[4px_4px_0_var(--color-ink)] motion-reduce:animate-none"
           />
         ))}
       </div>

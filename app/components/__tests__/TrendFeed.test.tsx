@@ -17,14 +17,15 @@ describe("TrendFeed", () => {
       />,
     );
 
-    expect(screen.getByText("Metallic Retro Runner")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Trending shoes" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Metallic Retro Runner" })).toBeInTheDocument();
   });
 
   it("renders the exact empty-state message", () => {
     render(<TrendFeed trends={[]} />);
 
-    expect(
-      screen.getByText("No trends right now — check back soon."),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "No trends right now — check back soon.",
+    );
   });
 });

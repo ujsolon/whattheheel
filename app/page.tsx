@@ -7,12 +7,11 @@ export default function Home() {
   const trends = getTrends();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      <AppNavigation />
+    <div className="flex min-h-screen flex-col bg-ink text-white">
       <Marquee />
       <main className="mx-auto w-full max-w-7xl px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-16 lg:pb-16">
         <header className="mb-8">
-          <p className="mb-2 text-sm font-black uppercase tracking-[0.15em] text-[#d4ff3f]">
+          <p className="mb-2 text-sm font-black uppercase tracking-[0.15em] text-lime">
             What the Heel?!
           </p>
           <h1 className="text-4xl font-black uppercase tracking-[-0.04em] sm:text-5xl">
@@ -21,6 +20,7 @@ export default function Home() {
         </header>
         <TrendFeed trends={trends} />
       </main>
+      <AppNavigation />
     </div>
   );
 }

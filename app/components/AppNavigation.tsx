@@ -4,7 +4,7 @@ export function AppNavigation() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-20 border-t-[3px] border-black bg-[#0a0a0a] px-4 pb-[env(safe-area-inset-bottom)] lg:sticky lg:top-0 lg:border-b-[3px] lg:border-t-0 lg:py-3"
+      className="fixed inset-x-0 bottom-0 z-20 border-t-[3px] border-ink bg-ink px-4 pb-[env(safe-area-inset-bottom)] lg:order-first lg:sticky lg:top-0 lg:bottom-auto lg:border-b-[3px] lg:border-t-0 lg:py-3"
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
         <span className="hidden text-xl font-black uppercase tracking-[-0.04em] text-white lg:block">
@@ -16,17 +16,23 @@ export function AppNavigation() {
 
             return (
               <li key={item}>
-                <span
-                  aria-current={isCurrent ? "page" : undefined}
-                  aria-disabled={isCurrent ? undefined : true}
-                  className={
-                    isCurrent
-                      ? "flex min-h-11 items-center justify-center border-[3px] border-black bg-[#d4ff3f] px-2 text-center text-xs font-black uppercase tracking-[0.05em] text-black shadow-[3px_3px_0_#ff3ec9] sm:text-sm"
-                      : "flex min-h-11 items-center justify-center border-[3px] border-black bg-[#0a0a0a] px-2 text-center text-xs font-black uppercase tracking-[0.05em] text-[#d4ff3f] sm:text-sm"
-                  }
-                >
-                  {item}
-                </span>
+                {isCurrent ? (
+                  <span
+                    aria-current="page"
+                    className="flex min-h-11 items-center justify-center border-[3px] border-ink bg-lime px-2 text-center text-xs font-black uppercase tracking-[0.05em] text-ink shadow-[3px_3px_0_var(--color-pink)] sm:text-sm"
+                  >
+                    {item}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="flex min-h-11 w-full cursor-not-allowed items-center justify-center border-[3px] border-ink bg-ink px-2 text-center text-xs font-black uppercase tracking-[0.05em] text-lime opacity-60 sm:text-sm"
+                  >
+                    <span>{item}</span>
+                    <span className="sr-only"> (coming soon)</span>
+                  </button>
+                )}
               </li>
             );
           })}

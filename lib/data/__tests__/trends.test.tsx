@@ -76,5 +76,27 @@ describe("getTrends", () => {
         buyUrl: null,
       },
     ]);
+    expect(consoleError).toHaveBeenNthCalledWith(
+      1,
+      'Skipping duplicate trend entry at index 1: id "runner"',
+    );
+    expect(consoleError).toHaveBeenNthCalledWith(
+      2,
+      "Skipping trend entry at index 2: label must be a non-empty string",
+    );
   });
+
+  it.each(["https://example.com/shoe.png", "//example.com/shoe.png", " trends/shoe.png", "trends/shoe.png"])(
+    "skips an unsafe image source: %s",
+    (shoeImageUrl) => {
+      mockedReadFileSync.mockReturnValue(
+        JSON.stringify([{ id: "unsafe", label: "Unsafe", shoeImageUrl, buyUrl: null }]),
+      );
+
+      expect(getTrends()).toEqual([]);
+      expect(consoleError).toHaveBeenCalledWith(
+        "Skipping trend entry at index 0: shoeImageUrl must be a clean root-relative /trends/ path",
+      );
+    },
+  );
 });

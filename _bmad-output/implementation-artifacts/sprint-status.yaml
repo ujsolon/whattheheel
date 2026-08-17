@@ -27,11 +27,11 @@ story_location: C:\Users\yujey\Documents\whattheheel\_bmad-output\implementation
 development_status:
   epic-1: in-progress
   1-1-project-scaffolding-foundation: done
-  1-2-curated-trendsetter-feed-display: in-progress
+  1-2-curated-trendsetter-feed-display: done
   1-3-anonymous-manual-overlay-preview: ready-for-dev
   epic-1-retrospective: optional
-  epic-2: backlog
-  2-1-user-registration-login: backlog
+  epic-2: in-progress
+  2-1-user-registration-login: ready-for-dev
   2-2-selfie-capture-profile-storage: backlog
   2-3-ai-virtual-try-on-generation: backlog
   2-4-vto-failure-handling: backlog

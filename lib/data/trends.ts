@@ -14,19 +14,29 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function isTrend(value: unknown): value is Trend {
+function validateTrend(value: unknown): string | null {
   if (typeof value !== "object" || value === null) {
-    return false;
+    return "entry must be an object";
   }
 
   const candidate = value as Record<string, unknown>;
-
-  return (
-    isNonEmptyString(candidate.id) &&
-    isNonEmptyString(candidate.label) &&
-    isNonEmptyString(candidate.shoeImageUrl) &&
-    (candidate.buyUrl === null || isNonEmptyString(candidate.buyUrl))
-  );
+  if (!isNonEmptyString(candidate.id)) return "id must be a non-empty string";
+  if (!isNonEmptyString(candidate.label)) return "label must be a non-empty string";
+  if (!isNonEmptyString(candidate.shoeImageUrl)) {
+    return "shoeImageUrl must be a non-empty string";
+  }
+  if (
+    candidate.shoeImageUrl !== candidate.shoeImageUrl.trim() ||
+    !candidate.shoeImageUrl.startsWith("/trends/") ||
+    candidate.shoeImageUrl.startsWith("//") ||
+    candidate.shoeImageUrl.includes("\\")
+  ) {
+    return "shoeImageUrl must be a clean root-relative /trends/ path";
+  }
+  if (candidate.buyUrl !== null && !isNonEmptyString(candidate.buyUrl)) {
+    return "buyUrl must be a non-empty string or null";
+  }
+  return null;
 }
 
 export function getTrends(): Trend[] {
@@ -40,14 +50,21 @@ export function getTrends(): Trend[] {
     const trends: Trend[] = [];
     const ids = new Set<string>();
 
-    for (const entry of parsed) {
-      if (!isTrend(entry) || ids.has(entry.id)) {
-        console.error("Skipping invalid or duplicate trend entry");
+    for (const [index, entry] of parsed.entries()) {
+      const validationError = validateTrend(entry);
+      if (validationError) {
+        console.error(`Skipping trend entry at index ${index}: ${validationError}`);
         continue;
       }
 
-      ids.add(entry.id);
-      trends.push(entry);
+      const trend = entry as Trend;
+      if (ids.has(trend.id)) {
+        console.error(`Skipping duplicate trend entry at index ${index}: id "${trend.id}"`);
+        continue;
+      }
+
+      ids.add(trend.id);
+      trends.push(trend);
     }
 
     return trends;

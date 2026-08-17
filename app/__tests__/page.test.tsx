@@ -22,5 +22,9 @@ describe("Home", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Test Shoe")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /buy/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("main").compareDocumentPosition(screen.getByRole("navigation")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
