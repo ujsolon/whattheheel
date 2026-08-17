@@ -185,6 +185,7 @@ Claude (Sonnet 5)
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Completed the US1.3 integration follow-up: the anonymous preview's post-interaction CTA now links to `/register`, with component-level destination coverage.
 
 ### File List
 
@@ -208,6 +209,9 @@ Claude (Sonnet 5)
 
 Not part of this story's changes (concurrent Story 1.3 work landed in the same working tree while this story was in progress): `app/components/OverlayCanvas.tsx`, `app/components/__tests__/OverlayCanvas.test.tsx`, `app/preview/`, `app/components/AppNavigation.tsx`, `app/components/TrendCard.tsx`, `app/components/__tests__/TrendCard.test.tsx`, `lib/data/trends.ts`, `lib/data/__tests__/trends.test.tsx`, `.gitignore`, `_bmad-output/implementation-artifacts/1-3-anonymous-manual-overlay-preview.md`.
 
+Post-completion integration follow-up: `app/components/OverlayCanvas.tsx`, its component test, and the Story 1.3 record were subsequently updated to close this story's documented `/register` CTA dependency. These remain outside the original US2.1 implementation scope but are part of its completed cross-story handoff.
+
 ## Change Log
 
 - 2026-08-17: Implemented registration/login end-to-end (MongoDB connection, `users` data boundary, NextAuth Credentials auth, `/register` screen, visual tokens) and verified live against a real MongoDB Atlas cluster; advanced the story to review.
+- 2026-08-17: Closed the US1.3 dependency note by wiring its post-interaction CTA to `/register`.

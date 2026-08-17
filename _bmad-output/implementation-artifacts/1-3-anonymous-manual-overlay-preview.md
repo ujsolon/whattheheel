@@ -53,6 +53,7 @@ so that I get an instant, no-signup styling preview.
   - [x] Below `lg`, cap the stage/content around 480px and stack stage → controls → CTA with safe bottom padding. At `lg`, allow a wider two-pane wrapper while keeping each pane/canvas capped around 480px; do not render separate mobile and desktop Client Components.
   - [x] Reuse `AppNavigation` with Feed still current because Preview is a child of the Feed surface; preserve the existing fixed-mobile/sticky-desktop behavior.
   - [x] Show the post-interaction CTA with clear copy such as `Unlock the AI Stylist`. Story 2.1 owns registration navigation and auth; do not add NextAuth, a registration form, a broken link, `#`, or a placeholder route. Render this story's handoff as a clearly unavailable action/callout that Story 2.1 can activate without changing the transform contract.
+  - [x] After Story 2.1 completion, activate that handoff as an explicit `Register to unlock the AI Stylist` link to `/register`; post-auth AI Stylist continuation remains owned by later Epic 2 stories.
 - [x] Add comprehensive verification (AC: 1-10)
   - [x] Update existing `TrendCard` tests for the accessible preview URL while preserving image/label assertions.
   - [x] Add co-located Jest/RTL tests for empty/loaded states, picker cancel, invalid/decode-failed images, rapid and same-file reselection, object-URL replacement/unmount cleanup, drag/pointer-cancel, pinch, sliders/buttons, keyboard equivalence, clamping, Reset, CTA gating, and photo-replacement reset.
@@ -233,6 +234,8 @@ Codex (GPT-5.6)
 - Verified 14 Jest suites / 51 tests, ESLint, strict production build, live HTTP 200 rendering, and mobile/desktop browser layouts.
 - Applied all 12 code-review patches, including functional pose updates for fast drag/keyboard input, native image-drag prevention, zero-distance pinch recovery, responsive caps, input/error hardening, and accessible naming.
 - Added regression coverage for every patched review finding; verified 17 Jest suites / 87 tests, ESLint, production build, and live preview HTTP 200.
+- Integrated the post-interaction AI Stylist CTA with US2.1 by linking explicit registration copy to `/register` and covering the destination in a dedicated overlay component test.
+- Reverified the completed integration after the routing change: 17 Jest suites / 88 tests, ESLint, and the production build passed.
 
 ### File List
 
@@ -253,3 +256,4 @@ Codex (GPT-5.6)
 - 2026-08-17: Created comprehensive implementation context and advanced the story to ready-for-dev.
 - 2026-08-17: Implemented anonymous manual overlay preview and advanced the story to review.
 - 2026-08-17: Applied all 12 code-review patches and advanced the story to done.
+- 2026-08-17: Activated the post-interaction CTA after US2.1 completion; it now links to `/register`.

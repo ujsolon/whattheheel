@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import type { ChangeEvent, KeyboardEvent, PointerEvent } from "react";
@@ -284,9 +285,12 @@ export function OverlayCanvas({ trend }: OverlayCanvasProps) {
         {hasInteracted && (
           <div className="mt-6 border-[3px] border-ink bg-pink p-4">
             <p className="font-black uppercase">Love the direction?</p>
-            <button type="button" disabled className="mt-2 min-h-11 w-full cursor-not-allowed border-[3px] border-ink bg-lime px-4 font-black uppercase opacity-70 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime">
-              Unlock the AI Stylist (coming soon)
-            </button>
+            <Link
+              href="/register"
+              className="mt-2 grid min-h-11 w-full place-items-center border-[3px] border-ink bg-lime px-4 font-black uppercase focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
+            >
+              Register to unlock the AI Stylist
+            </Link>
           </div>
         )}
       </div>

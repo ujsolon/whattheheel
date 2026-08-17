@@ -106,7 +106,7 @@ describe("OverlayCanvas", () => {
     expect(screen.getByRole("group", { name: "Shoe overlay stage" })).toHaveTextContent(
       "Choose a foot photo",
     );
-    expect(screen.queryByText(/Unlock the AI Stylist/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/unlock the AI Stylist/i)).not.toBeInTheDocument();
   });
 
   it("treats cancellation as a no-op and rejects empty or non-image files inline", () => {
@@ -195,12 +195,18 @@ describe("OverlayCanvas", () => {
     fireEvent.change(screen.getByLabelText(/Rotation:/), { target: { value: "45" } });
     fireEvent.click(screen.getByRole("button", { name: "+15°" }));
     expect(screen.getByLabelText("Rotation: 45°")).toHaveValue("45");
-    expect(screen.getByText(/Unlock the AI Stylist/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Register to unlock the AI Stylist" })).toHaveAttribute(
+      "href",
+      "/register",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
     expect(screen.getByLabelText("Scale: 1.00")).toHaveValue("1");
     expect(screen.getByLabelText("Rotation: 0°")).toHaveValue("0");
-    expect(screen.getByText(/Unlock the AI Stylist/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Register to unlock the AI Stylist" })).toHaveAttribute(
+      "href",
+      "/register",
+    );
   });
 
   it("supports keyboard transforms only on the focused stage", () => {
@@ -217,6 +223,22 @@ describe("OverlayCanvas", () => {
 
     fireEvent.keyDown(screen.getByRole("img", { name: "Your selected foot" }), { key: "+" });
     expect(screen.getByLabelText("Scale: 1.05")).toHaveValue("1.05");
+  });
+
+  it("invites registration through the post-interaction CTA", () => {
+    render(<OverlayCanvas trend={trend} />);
+    loadPhoto();
+
+    expect(
+      screen.queryByRole("link", { name: "Register to unlock the AI Stylist" }),
+    ).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("group", { name: "Shoe overlay stage" }), {
+      key: "ArrowRight",
+    });
+
+    expect(
+      screen.getByRole("link", { name: "Register to unlock the AI Stylist" }),
+    ).toHaveAttribute("href", "/register");
   });
 
   it("accumulates keyboard updates dispatched in the same render batch", () => {
@@ -254,7 +276,7 @@ describe("OverlayCanvas", () => {
 
     fireEvent.pointerDown(stage, { pointerId: 1, clientX: 100, clientY: 100 });
     fireEvent.pointerMove(stage, { pointerId: 1, clientX: 140, clientY: 120 });
-    expect(screen.getByText(/Unlock the AI Stylist/)).toBeInTheDocument();
+    expect(screen.getByText(/unlock the AI Stylist/i)).toBeInTheDocument();
     fireEvent.pointerCancel(stage, { pointerId: 1 });
 
     fireEvent.pointerDown(stage, { pointerId: 2, clientX: 100, clientY: 100 });
@@ -327,10 +349,10 @@ describe("OverlayCanvas", () => {
     render(<OverlayCanvas trend={trend} />);
     loadPhoto("first.png");
     fireEvent.click(screen.getByRole("button", { name: "+15°" }));
-    expect(screen.getByText(/Unlock the AI Stylist/)).toBeInTheDocument();
+    expect(screen.getByText(/unlock the AI Stylist/i)).toBeInTheDocument();
 
     loadPhoto("second.png");
     expect(screen.getByLabelText("Rotation: 0°")).toHaveValue("0");
-    expect(screen.queryByText(/Unlock the AI Stylist/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/unlock the AI Stylist/i)).not.toBeInTheDocument();
   });
 });
