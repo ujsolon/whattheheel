@@ -33,4 +33,11 @@ describe("userProfiles repository", () => {
     const { replaceProfile } = await import("@/lib/data/userProfiles");
     await expect(replaceProfile("user-1", null, { userId: "user-1", selfieUrl: "new", selfiePublicId: "new-id", width: 600, height: 600, format: "png", bytes: 20 })).resolves.toBeNull();
   });
+  it("sets a gender preference via a plain update, not the CAS path", async () => {
+    updateOne.mockResolvedValue({ acknowledged: true });
+    const { setGenderPreference } = await import("@/lib/data/userProfiles");
+    await setGenderPreference("user-1", "female");
+    expect(updateOne).toHaveBeenCalledWith({ userId: "user-1" }, { $set: { gender: "female" } });
+    expect(findOneAndUpdate).not.toHaveBeenCalled();
+  });
 });

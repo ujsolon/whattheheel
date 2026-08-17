@@ -6,12 +6,15 @@ import type { Trend } from "@/lib/data/trends";
 interface TrendCardProps {
   trend: Trend;
   priority?: boolean;
+  hrefBuilder?: (trend: Trend) => string;
 }
 
-export function TrendCard({ trend, priority = false }: TrendCardProps) {
+const defaultHrefBuilder = (trend: Trend) => `/preview?trend=${encodeURIComponent(trend.id)}`;
+
+export function TrendCard({ trend, priority = false, hrefBuilder = defaultHrefBuilder }: TrendCardProps) {
   return (
     <Link
-      href={`/preview?trend=${encodeURIComponent(trend.id)}`}
+      href={hrefBuilder(trend)}
       aria-label={trend.label}
       className="flex h-full flex-col border-[3px] border-ink bg-white text-ink shadow-[4px_4px_0_var(--color-ink)] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
     >

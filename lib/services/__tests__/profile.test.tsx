@@ -31,7 +31,7 @@ describe("profile service", () => {
     expect(jest.mocked(validateImage).mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(uploadSelfie).mock.invocationCallOrder[0]);
     expect(jest.mocked(uploadSelfie).mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(replaceProfile).mock.invocationCallOrder[0]);
     expect(replaceProfile).toHaveBeenCalledWith(user.id, null, expect.objectContaining({ userId: user.id, selfiePublicId: "new-id" }));
-    expect(result).toEqual({ email: user.email, selfieUrl: "https://signed.test/selfie", updatedAt: profile.updatedAt.toISOString() });
+    expect(result).toEqual({ email: user.email, selfieUrl: "https://signed.test/selfie", updatedAt: profile.updatedAt.toISOString(), gender: null });
     expect(result).not.toHaveProperty("selfiePublicId");
   });
   it("stops before side effects when validation rejects", async () => {
@@ -61,5 +61,15 @@ describe("profile service", () => {
     await expect(getMyProfile()).resolves.toMatchObject({ email: user.email, selfieUrl: "https://signed.test/selfie" });
     expect(deleteSelfie).toHaveBeenCalledWith("old-id");
     expect(removePendingCleanup).toHaveBeenCalledWith(user.id, "old-id");
+  });
+  it("surfaces gender when set on the profile, and null when absent", async () => {
+    jest.mocked(findProfile).mockResolvedValue(profile as never);
+    await expect(getMyProfile()).resolves.toMatchObject({ gender: null });
+    jest.mocked(findProfile).mockResolvedValue({ ...profile, gender: "female" } as never);
+    await expect(getMyProfile()).resolves.toMatchObject({ gender: "female" });
+  });
+  it("has no selfie yet: gender is still null, not an error", async () => {
+    jest.mocked(findProfile).mockResolvedValue(null);
+    await expect(getMyProfile()).resolves.toMatchObject({ selfieUrl: null, gender: null });
   });
 });

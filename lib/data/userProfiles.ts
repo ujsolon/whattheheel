@@ -2,7 +2,7 @@ import type { Collection, Filter } from "mongodb";
 import { getDb } from "@/lib/data/mongodb";
 import type { ImageFormat } from "@/lib/services/imageValidation";
 
-export interface UserProfileDocument { userId: string; selfieUrl: string; selfiePublicId: string; assetVersion: number; width: number; height: number; format: ImageFormat; bytes: number; pendingCleanupPublicIds: string[]; createdAt: Date; updatedAt: Date }
+export interface UserProfileDocument { userId: string; selfieUrl: string; selfiePublicId: string; assetVersion: number; width: number; height: number; format: ImageFormat; bytes: number; pendingCleanupPublicIds: string[]; gender?: "female" | "male"; createdAt: Date; updatedAt: Date }
 let indexedCollection: object | undefined; let indexPromise: Promise<unknown> | undefined;
 async function collection() { const db = await getDb(); const value = db.collection<UserProfileDocument>("user_profiles"); await ensureIndex(value); return value; }
 async function ensureIndex(value: Collection<UserProfileDocument>) { if (indexedCollection !== value || !indexPromise) { indexedCollection = value; indexPromise = value.createIndex({ userId: 1 }, { unique: true }).catch((error) => { indexedCollection = undefined; indexPromise = undefined; throw error; }); } await indexPromise; }
@@ -21,3 +21,4 @@ export async function replaceProfile(userId: string, prior: UserProfileDocument 
   }
 }
 export async function removePendingCleanup(userId: string, publicId: string) { await (await collection()).updateOne({ userId }, { $pull: { pendingCleanupPublicIds: publicId } }); }
+export async function setGenderPreference(userId: string, gender: "female" | "male"): Promise<void> { await (await collection()).updateOne({ userId }, { $set: { gender } }); }

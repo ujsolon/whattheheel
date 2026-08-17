@@ -4,7 +4,7 @@ baseline_commit: d8d75bcd813b35d1c22acd95ae1c1e8515d9c74f
 
 # Story 2.2: Selfie Capture & Profile Storage
 
-Status: review
+Status: done
 
 ## Story
 
@@ -75,6 +75,10 @@ so that the AI Stylist can generate a personalized visualization.
   - [x] Route-test the exact HTTP contract, missing/false/understated/duplicate `Content-Length`, absent/chunked length, multipart overhead cap, duplicate/unexpected files, unforgeable ownership, and public DTO exclusion. Component-test picker cancel, same-file reselection, rapid selection, browser MIME `""`, preview decode failure, pending/error/success/replacement, URL cleanup, labels, roles, focus classes, and exact copy.
   - [x] Regression-test safe callback handling (including external/protocol-relative rejection), new-registration/Profile continuation, protected Profile sign-in return, trend-query preservation, Profile sign-out, navigation active states, and all existing AuthForm flows.
   - [x] Run `npm test -- --runInBand`, `npm run lint`, `npm run build`, and live browser checks for login -> Profile, valid JPG/PNG upload, HEIC rejection, other invalid cases, refresh persistence, replacement, sign-out/anonymous gate, 480px cap, and mobile/desktop navigation.
+
+### Review Findings
+
+- [x] [Review][Patch] Preserve a validated trend through the anonymous Profile gate [`app/profile/page.tsx`:11] — `/profile?trend=<id>` now preserves a known curated trend in the registration callback; unknown and non-scalar values safely fall back to `/profile`, with regression coverage.
 
 ## Dev Notes
 
@@ -178,6 +182,7 @@ Codex (GPT-5.6)
 - Implemented bounded authoritative JPEG/PNG validation, authenticated Cloudinary storage, five-minute private URLs, versioned MongoDB profile replacement, cleanup retries, and stable upload API envelopes.
 - Implemented the responsive Profile/selfie UI, navigation activation, sign-out, inline validation, preview lifecycle handling, and HEIC guidance.
 - Verification complete: 24 suites / 132 tests, ESLint, production build, and a live registration → Profile → PNG upload → HEIC rejection → replacement → refresh → anonymous-gate flow. Temporary MongoDB and Cloudinary test records were deleted.
+- Resolved code-review patch: anonymous `/profile?trend=<id>` continuation now preserves validated trend context through registration. Final verification: 25 suites / 134 tests, ESLint, and production build.
 
 ### File List
 
@@ -195,6 +200,7 @@ Codex (GPT-5.6)
 - `app/components/__tests__/SelfieUploadForm.test.tsx`
 - `app/components/__tests__/SignOutButton.test.tsx`
 - `app/profile/page.tsx`
+- `app/profile/__tests__/page.test.tsx`
 - `app/register/page.tsx`
 - `lib/data/userProfiles.ts`
 - `lib/data/__tests__/userProfiles.test.tsx`
@@ -216,3 +222,4 @@ Codex (GPT-5.6)
 ## Change Log
 
 - 2026-08-17: Completed US2.2 authenticated selfie upload and profile storage implementation; added security, concurrency, compensation, API-contract, UI, and regression coverage; moved story to review.
+- 2026-08-17: Addressed the code-review trend-continuation finding and moved US2.2 to done.

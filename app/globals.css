@@ -58,3 +58,23 @@ body {
     transform: none;
   }
 }
+
+@keyframes vto-progress-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.vto-progress-fill {
+  animation: vto-progress-sweep 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vto-progress-fill {
+    animation: none;
+    transform: none;
+  }
+}

@@ -23,7 +23,7 @@ export async function uploadSelfie(buffer: Buffer): Promise<UploadedSelfie> {
 export async function deleteSelfie(publicId: string): Promise<void> {
   configure(); await cloudinary.uploader.destroy(publicId, { resource_type: "image", type: "authenticated", invalidate: true });
 }
-export function getPrivateSelfieUrl(publicId: string, format: string, now = Date.now()): string {
+export function getPrivateSelfieUrl(publicId: string, format: string, now = Date.now(), expiresInSeconds = 300): string {
   configure();
-  return cloudinary.utils.private_download_url(publicId, format, { resource_type: "image", type: "authenticated", expires_at: Math.floor(now / 1000) + 300 });
+  return cloudinary.utils.private_download_url(publicId, format, { resource_type: "image", type: "authenticated", expires_at: Math.floor(now / 1000) + expiresInSeconds });
 }

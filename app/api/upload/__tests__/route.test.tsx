@@ -22,11 +22,11 @@ function request(form: FormData, headers?: HeadersInit) { return new Request("ht
 describe("POST /api/upload", () => {
   beforeEach(() => jest.clearAllMocks());
   it("returns the exact success envelope without internal identifiers", async () => {
-    jest.mocked(uploadMySelfie).mockResolvedValue({ email: "a@b.com", selfieUrl: "https://signed", updatedAt: "2026-01-01" });
+    jest.mocked(uploadMySelfie).mockResolvedValue({ email: "a@b.com", selfieUrl: "https://signed", updatedAt: "2026-01-01", gender: null });
     const form = new FormData(); form.append("selfie", new File(["image"], "selfie.jpg", { type: "image/jpeg" }));
     const response = await POST(request(form));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ data: { profile: { email: "a@b.com", selfieUrl: "https://signed", updatedAt: "2026-01-01" } } });
+    expect(await response.json()).toEqual({ data: { profile: { email: "a@b.com", selfieUrl: "https://signed", updatedAt: "2026-01-01", gender: null } } });
   });
   it("rejects missing, duplicate, and unexpected file fields before service calls", async () => {
     for (const form of [new FormData(), (() => { const f = new FormData(); f.append("selfie", new File(["a"], "a.jpg")); f.append("selfie", new File(["b"], "b.jpg")); return f; })(), (() => { const f = new FormData(); f.append("selfie", new File(["a"], "a.jpg")); f.append("avatar", new File(["b"], "b.jpg")); return f; })()]) {

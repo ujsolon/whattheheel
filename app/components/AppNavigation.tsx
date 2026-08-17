@@ -29,14 +29,7 @@ export function AppNavigation({ current = "Feed" }: { current?: (typeof navigati
                 ) : item === "Feed" ? (
                   <Link href="/" className="flex min-h-11 items-center justify-center border-[3px] border-ink bg-ink px-2 text-center text-xs font-black uppercase text-lime focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime sm:text-sm">Feed</Link>
                 ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="flex min-h-11 w-full min-w-0 cursor-not-allowed items-center justify-center border-[3px] border-ink bg-ink px-1 text-center text-xs font-black uppercase leading-tight tracking-[0.05em] text-lime opacity-60 sm:px-2 sm:text-sm"
-                  >
-                    <span>{item}</span>
-                    <span className="sr-only"> (coming soon)</span>
-                  </button>
+                  <Link href="/stylist" className="flex min-h-11 items-center justify-center border-[3px] border-ink bg-ink px-2 text-center text-xs font-black uppercase text-lime focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime sm:text-sm">AI Stylist</Link>
                 )}
               </li>
             );

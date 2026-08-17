@@ -4,7 +4,7 @@ import { deleteSelfie, getPrivateSelfieUrl, uploadSelfie } from "@/lib/external/
 import { requireAuthenticatedUser } from "@/lib/services/auth";
 import { validateImage } from "@/lib/services/imageValidation";
 
-export interface ProfileView { email: string; selfieUrl: string | null; updatedAt: string | null }
+export interface ProfileView { email: string; selfieUrl: string | null; updatedAt: string | null; gender: "female" | "male" | null }
 export class ProfileConflictError extends Error { constructor() { super("Profile changed during upload"); this.name = "ProfileConflictError"; } }
 
 async function retryDelete(publicId: string): Promise<boolean> {
@@ -18,7 +18,7 @@ async function cleanupPending(profile: UserProfileDocument) {
   for (const publicId of profile.pendingCleanupPublicIds) if (await retryDelete(publicId)) await removePendingCleanup(profile.userId, publicId);
 }
 function view(email: string, profile: UserProfileDocument | null): ProfileView {
-  return { email, selfieUrl: profile ? getPrivateSelfieUrl(profile.selfiePublicId, profile.format) : null, updatedAt: profile?.updatedAt.toISOString() ?? null };
+  return { email, selfieUrl: profile ? getPrivateSelfieUrl(profile.selfiePublicId, profile.format) : null, updatedAt: profile?.updatedAt.toISOString() ?? null, gender: profile?.gender ?? null };
 }
 export async function getMyProfile(): Promise<ProfileView> {
   const user = await requireAuthenticatedUser(); const profile = await findProfile(user.id);

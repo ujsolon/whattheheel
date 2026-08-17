@@ -29,10 +29,15 @@ describe("Cloudinary selfie boundary", () => {
     await deleteSelfie("opaque-id");
     expect(destroy).toHaveBeenCalledWith("opaque-id", { resource_type: "image", type: "authenticated", invalidate: true });
   });
-  it("generates a five-minute authenticated private download URL", async () => {
+  it("generates a five-minute authenticated private download URL by default", async () => {
     const { getPrivateSelfieUrl } = await import("@/lib/external/cloudinary");
     expect(getPrivateSelfieUrl("opaque-id", "jpeg", 1_000_000)).toBe("https://signed.test/selfie");
     expect(privateDownloadUrl).toHaveBeenCalledWith("opaque-id", "jpeg", { resource_type: "image", type: "authenticated", expires_at: 1300 });
+  });
+  it("accepts a custom expiry duration for callers that need longer-lived signed URLs", async () => {
+    const { getPrivateSelfieUrl } = await import("@/lib/external/cloudinary");
+    getPrivateSelfieUrl("opaque-id", "jpeg", 1_000_000, 1800);
+    expect(privateDownloadUrl).toHaveBeenCalledWith("opaque-id", "jpeg", { resource_type: "image", type: "authenticated", expires_at: 2800 });
   });
   it("fails before SDK operations when configuration is incomplete", async () => {
     delete process.env.CLOUDINARY_API_SECRET;
