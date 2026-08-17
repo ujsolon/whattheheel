@@ -4,7 +4,7 @@ baseline_commit: NO_VCS
 
 # Story 1.1: Project Scaffolding & Foundation
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -22,20 +22,20 @@ so that feature stories have a working, architecturally compliant foundation.
 
 ## Tasks / Subtasks
 
-- [ ] Scaffold the application (AC: 1)
-  - [ ] Verify the currently available stable Next.js release remains within 16.x; use `create-next-app` with TypeScript, Tailwind, ESLint, App Router, and the `@/*` alias.
-  - [ ] Keep the project at the repository root; do not use a `src/` directory because the approved architecture and acceptance criteria require root `app/` and `lib/` paths.
-  - [ ] Confirm strict TypeScript is enabled and baseline scripts work.
-- [ ] Apply foundation configuration (AC: 2–3)
-  - [ ] Add Node 24 engine constraint to `package.json`.
-  - [ ] Add the empty architectural directories with tracked placeholders where needed; do not add feature logic or external-service dependencies.
-  - [ ] Preserve App Router conventions and the `@/*` alias.
-- [ ] Configure quality tooling (AC: 5)
-  - [ ] Install and configure Jest plus React Testing Library for a Next.js App Router project.
-  - [ ] Add a test command and a minimal smoke test for the generated root page using the required co-located naming convention.
-- [ ] Verify the foundation (AC: 4–5)
-  - [ ] Run lint and tests successfully.
-  - [ ] Start the development server and verify a successful root-page response without build/runtime errors.
+- [x] Scaffold the application (AC: 1)
+  - [x] Verify the currently available stable Next.js release remains within 16.x; use `create-next-app` with TypeScript, Tailwind, ESLint, App Router, and the `@/*` alias.
+  - [x] Keep the project at the repository root; do not use a `src/` directory because the approved architecture and acceptance criteria require root `app/` and `lib/` paths.
+  - [x] Confirm strict TypeScript is enabled and baseline scripts work.
+- [x] Apply foundation configuration (AC: 2–3)
+  - [x] Add Node 24 engine constraint to `package.json`.
+  - [x] Add the empty architectural directories with tracked placeholders where needed; do not add feature logic or external-service dependencies.
+  - [x] Preserve App Router conventions and the `@/*` alias.
+- [x] Configure quality tooling (AC: 5)
+  - [x] Install and configure Jest plus React Testing Library for a Next.js App Router project.
+  - [x] Add a test command and a minimal smoke test for the generated root page using the required co-located naming convention.
+- [x] Verify the foundation (AC: 4–5)
+  - [x] Run lint and tests successfully.
+  - [x] Start the development server and verify a successful root-page response without build/runtime errors.
 
 ## Dev Notes
 
@@ -103,11 +103,43 @@ Codex (GPT-5.6 Terra)
 ### Debug Log References
 
 - 2026-08-17: Git baseline unavailable because the sandbox does not trust the repository owner; recorded `NO_VCS` per workflow.
+- 2026-08-17: Confirmed the intentionally red home-page smoke test before implementing the minimal branded page.
+- 2026-08-17: Dev-server verification returned HTTP 200 with the expected heading on port 3100.
+
+### Implementation Plan
+
+- Scaffold the exact stable Next.js 16.x release at the repository root.
+- Establish architecture boundaries with tracked directory placeholders.
+- Configure Jest through `next/jest`, prove the smoke test red, then implement the minimal page to turn it green.
+- Validate lint, tests, production build, required paths, package versions, and the live development server.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed — comprehensive developer guide created.
+- Scaffolded Next.js 16.3.1 with React 19.2.8, TypeScript 5, Tailwind CSS 4, ESLint 9, App Router, strict mode, and the `@/*` alias.
+- Added the Node 24 engine contract and the Route Handler/Service/Data/External foundation directories without installing future feature integrations.
+- Configured Jest 30 and React Testing Library with a co-located root-page smoke test.
+- Removed the generated remote-font dependency so builds are deterministic without internet access.
+- Validation passed: lint, 1/1 Jest test, production build/type checking, required-directory checks, and live `GET /` HTTP 200.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/1-1-project-scaffolding-foundation.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `app/__tests__/page.test.tsx`
+- `app/api/.gitkeep`
+- `app/components/.gitkeep`
+- `app/globals.css`
+- `app/layout.tsx`
+- `app/page.tsx`
+- `jest.config.ts`
+- `jest.setup.ts`
+- `lib/data/.gitkeep`
+- `lib/external/.gitkeep`
+- `lib/services/.gitkeep`
+- `package-lock.json`
+- `package.json`
+
+## Change Log
+
+- 2026-08-17: Implemented and validated the Next.js foundation; story advanced to review.
