@@ -70,6 +70,7 @@ Dependency direction is one-way: `app/**` (pages/components) → Route Handlers 
 - **Binds:** FR-03, FR-04, Image Constraints NFR
 - **Prevents:** format/size/dimension checks drifting between client and server, or being skippable
 - **Rule:** Image validation (format, file size, dimensions per the PRD's Image Constraints table) happens exactly once, server-side, inside the upload Route Handler's service call, before any Cloudinary upload. Any client-side check is a UX hint only and is never authoritative.
+- **MVP codec constraint:** Story 2.2's authoritative upload validator accepts decoded JPEG and PNG only. HEIC/HEIF is rejected before external- or data-layer side effects because the standard Vercel/Sharp runtime has no proven HEVC decoder. This does not change YouCam's downstream format capability.
 
 ### AD-6 — VTO failure handling contract
 
@@ -198,6 +199,7 @@ erDiagram
 
 ## Deferred
 
+- **Direct HEIC/HEIF selfie intake** — the standard Sharp/Vercel runtime cannot decode HEVC-backed HEIC without a custom libvips/libheif build; evaluated JavaScript alternatives were either vulnerable or incompatible with the authoritative Node boundary. Restore only with a patched, Vercel-compatible server decoder or a separately approved image-processing service, plus a genuine HEVC fixture and deployment-runtime proof. Until then, users must export or convert HEIC photos to JPEG/PNG.
 - **Retail link source** — FR-05's "Buy Now" URLs: static field in the curated trend JSON for the hackathon vs. a live retail/affiliate API. Deferred until a retail partner/data source is chosen; doesn't block build start since the `TREND.buyUrl` field works either way.
 - **Rate limiting / abuse protection** on `/api/vto-tasks` beyond auth-gating — out of scope for hackathon timeline; revisit if the demo is exposed publicly beyond judges.
 - **CI/CD pipeline specifics** (GitHub Actions, preview-deploy gating) — Vercel's default git-push deploy is sufficient for a hackathon; formalize only if the team needs branch protection or test gating before merge.

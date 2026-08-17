@@ -14,8 +14,10 @@ export function SelfieUploadForm({ initialProfile }: { initialProfile: ProfileVi
   function select(next: File | null) {
     if (preview) URL.revokeObjectURL(preview); setPreview(null); setFile(next); setError(null); setMessage(null);
     if (!next) return;
-    if (next.type && !["image/jpeg", "image/png"].includes(next.type)) { setError("Use a JPG or PNG image."); return; }
-    const url = URL.createObjectURL(next); setPreview(url);
+    if (next.size >= 10_000_000) { setFile(null); setError("That image is too large (max 10MB) — please choose a smaller file."); return; }
+    if (next.type && !["image/jpeg", "image/png"].includes(next.type)) { setFile(null); setError("Use a JPG or PNG image."); return; }
+    try { const url = URL.createObjectURL(next); setPreview(url); }
+    catch { setFile(null); setError("We couldn't read that image — please choose a different file."); }
   }
   async function submit(event: FormEvent) {
     event.preventDefault(); if (!file) { setError("Choose a selfie to upload."); return; }

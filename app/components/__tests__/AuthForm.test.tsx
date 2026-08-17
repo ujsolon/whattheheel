@@ -108,6 +108,15 @@ describe("AuthForm", () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/profile"));
   });
 
+  it("continues to the validated callback supplied by the server page", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({ data: {} }) });
+    mockSignIn.mockResolvedValue({ error: null, ok: true });
+    render(<AuthForm callbackUrl="/profile?trend=loafer" />);
+    fillForm("jordan@example.com", "longenough1");
+    fireEvent.click(screen.getByRole("button", { name: "Sign Up" }));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/profile?trend=loafer"));
+  });
+
   it("shows the locked mismatch copy on a failed Sign In, without calling the register endpoint", async () => {
     mockSignIn.mockResolvedValue({ error: "CredentialsSignin", ok: false });
 

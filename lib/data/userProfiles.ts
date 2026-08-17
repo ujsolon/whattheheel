@@ -11,7 +11,13 @@ export async function replaceProfile(userId: string, prior: UserProfileDocument 
   const now = new Date(); const c = await collection();
   const filter: Filter<UserProfileDocument> = prior ? { userId, selfiePublicId: prior.selfiePublicId, assetVersion: prior.assetVersion } : { userId, selfiePublicId: { $exists: false } };
   const doc: UserProfileDocument = { ...next, userId, assetVersion: (prior?.assetVersion ?? 0) + 1, pendingCleanupPublicIds: prior ? [...prior.pendingCleanupPublicIds, prior.selfiePublicId] : [], createdAt: prior?.createdAt ?? now, updatedAt: now };
-  const result = await c.findOneAndUpdate(filter, { $set: doc }, { upsert: !prior, returnDocument: "after", includeResultMetadata: false });
-  return result;
+  try {
+    return await c.findOneAndUpdate(filter, { $set: doc }, { upsert: !prior, returnDocument: "after", includeResultMetadata: false });
+  } catch (error) {
+    // Two first uploads can both observe no profile. The unique userId index
+    // turns the losing upsert into the same CAS miss as an existing-profile race.
+    if (!prior && typeof error === "object" && error !== null && "code" in error && error.code === 11000) return null;
+    throw error;
+  }
 }
 export async function removePendingCleanup(userId: string, publicId: string) { await (await collection()).updateOne({ userId }, { $pull: { pendingCleanupPublicIds: publicId } }); }

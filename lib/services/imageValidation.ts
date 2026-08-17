@@ -9,9 +9,16 @@ export class ImageValidationError extends Error {
   }
 }
 
+function isHeifContainer(buffer: Buffer): boolean {
+  if (buffer.byteLength < 12 || buffer.toString("ascii", 4, 8) !== "ftyp") return false;
+  const brands = buffer.toString("ascii", 8, Math.min(buffer.byteLength, 32));
+  return /heic|heix|hevc|hevx|heim|heis|mif1|msf1/.test(brands);
+}
+
 export async function validateImage(input: File | Buffer | Uint8Array | null | undefined): Promise<ValidatedImage> {
   if (!input) throw new ImageValidationError("missing_file", "Choose a selfie to upload.");
   const buffer = Buffer.isBuffer(input) ? input : input instanceof File ? Buffer.from(await input.arrayBuffer()) : Buffer.from(input);
+  if (isHeifContainer(buffer)) throw new ImageValidationError("unsupported_format", "Use a JPG or PNG image.");
   if (buffer.byteLength >= 10_000_000) throw new ImageValidationError("file_too_large", "That image is too large (max 10MB) — please choose a smaller file.");
   let metadata: Awaited<ReturnType<ReturnType<typeof sharp>["metadata"]>>;
   try { metadata = await sharp(buffer, { limitInputPixels: 40_000_000, pages: 2 }).metadata(); }

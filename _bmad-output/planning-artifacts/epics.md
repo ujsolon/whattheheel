@@ -29,7 +29,7 @@ FR6: VTO Failure Handling — on task failure, show an inline error on the same 
 NFR1: Performance — VTO requests must be handled via polling; the UI must manage user expectations during inference.
 NFR2: Security — API keys and sensitive credentials must be managed via environment variables (never `NEXT_PUBLIC_`-prefixed, per architecture AD-1).
 NFR3: UX — the staged funnel must be seamless, minimizing friction while clearly communicating the value of registration.
-NFR4: Image Constraints (YouCam AI Shoes API) — selfie: min 512x512, face >15% of image height, single subject, face fully visible, framing top-of-head to chest; shoe product image: min 512x512, shoe >25% of image height; shoe worn image: min 800x800, shoe >20% of image height, single item only. All jpg/jpeg/png/heic, <10MB.
+NFR4: Image Constraints (YouCam AI Shoes API) — selfie: min 512x512, face >15% of image height, single subject, face fully visible, framing top-of-head to chest; shoe product image: min 512x512, shoe >25% of image height; shoe worn image: min 800x800, shoe >20% of image height, single item only. YouCam supports jpg/jpeg/png/heic inputs, all <10MB. For the MVP app-owned selfie upload boundary, accept jpg/jpeg/png only; direct HEIC/HEIF intake is deferred pending a patched Vercel-compatible server decoder and deployment-runtime proof.
 NFR5: VTO Error Handling — each YouCam error code maps to specific inline copy: `error_no_face`, `error_download_image`, `error_inference`, `error_nsfw_content_detected`, `exceed_max_filesize` (all user-facing); `invalid_parameter` (logged server-side only, surfaced to the user as generic `error_inference` copy per architecture AD-6).
 NFR6: Cost Management — each AI Shoes VTO call consumes 2 YouCam units; VTO calls are restricted to registered users only (anonymous tier stays fully client-side) to protect the free-tier budget.
 
@@ -188,7 +188,9 @@ So that the AI Stylist can generate a personalized visualization.
 
 **Given** I am logged in
 **When** I upload a selfie
-**Then** it's validated server-side (format/size/dimensions, NFR4) before anything else happens (AD-5, single validation point)
+**Then** it is validated server-side before any Cloudinary or database side effect: decoded format must be JPG/JPEG or PNG, size must be strictly under 10MB, and effective dimensions must be at least 512x512 (AD-5, single validation point)
+
+**And** HEIC/HEIF is rejected with clear inline guidance in this release, with zero Cloudinary uploads and zero profile writes
 
 **Given** a valid selfie
 **When** validation passes

@@ -41,7 +41,7 @@ updated: '2026-08-17'
 - **Security:** API keys and sensitive credentials must be managed via environment variables.
 - **UX:** The staged funnel must be seamless, minimizing friction while clearly communicating the value of registration.
 - **Image Constraints (YouCam AI Shoes API):**
-  - Selfie: min 512x512, face >15% of image height, single subject, face fully visible, framing top-of-head to chest (half-body to waist optimal). jpg/jpeg/png/heic, <10MB.
+  - Selfie: min 512x512, face >15% of image height, single subject, face fully visible, framing top-of-head to chest (half-body to waist optimal), <10MB. The YouCam API supports jpg/jpeg/png/heic; the MVP app-owned selfie upload accepts jpg/jpeg/png only. Direct HEIC/HEIF intake is deferred, and users must export or convert HEIC photos before upload.
   - Shoes (Product Image): min 512x512, shoe >25% of image height. jpg/jpeg/png/heic, <10MB.
   - Shoes (Worn Image): min 800x800, shoe >20% of image height, single item only. jpg/jpeg/png/heic, <10MB.
 - **VTO Error Handling (FR-06):** Each API error code maps to specific inline copy:
@@ -57,4 +57,5 @@ updated: '2026-08-17'
 - [ASSUMPTION] Curated JSON dataset will be sufficient to populate the trend feed for the hackathon prototype.
 - [ASSUMPTION] The manual client-side overlay (FR-02) provides enough perceived value to drive registration, now reinforced by cost logic (real VTO costs units; the anon tier must stay free to protect budget) not just UX logic.
 - [RESOLVED] YouCam shoe/selfie image format requirements — see Non-Functional Requirements > Image Constraints, sourced from `docs/perfectcorp-api-reference.md`.
+- [DEFERRED] Direct HEIC/HEIF intake at the app-owned selfie-upload boundary — restore only with a patched, Vercel-compatible server decoder or an approved image-processing service, plus a genuine HEVC fixture and deployment-runtime proof. This does not change YouCam's downstream HEIC capability.
 - [RESOLVED] VTO failure fallback UI — see FR-06 and Non-Functional Requirements > VTO Error Handling.

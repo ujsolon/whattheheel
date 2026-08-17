@@ -9,6 +9,7 @@ import {
   InvalidCredentialsInputError,
   RegistrationRateLimitError,
   registerUser,
+  safeCallbackUrl,
 } from "@/lib/services/auth";
 
 // `@/lib/data/users` transitively imports the real `mongodb`/`bson` packages
@@ -49,6 +50,13 @@ describe("authOptions", () => {
 
   it("configures no adapter", () => {
     expect(authOptions.adapter).toBeUndefined();
+  });
+
+  it("propagates the persistent user id through JWT and session callbacks", async () => {
+    const token = await authOptions.callbacks!.jwt!({ token: {}, user: { id: "user-1" } } as never);
+    const session = await authOptions.callbacks!.session!({ session: { user: { email: "a@b.com" }, expires: "later" }, token } as never);
+    expect(token.sub).toBe("user-1");
+    expect((session.user as { id?: string } | undefined)?.id).toBe("user-1");
   });
 
   describe("authorize", () => {
@@ -142,6 +150,15 @@ describe("authOptions", () => {
       expect(consoleError).toHaveBeenCalledWith("Unable to authorize credentials", expect.any(Error));
       consoleError.mockRestore();
     });
+  });
+});
+
+describe("safeCallbackUrl", () => {
+  it.each(["https://evil.test", "//evil.test/path", "/\\evil", "javascript:alert(1)"])("rejects unsafe target %s", (value) => {
+    expect(safeCallbackUrl(value, "/profile")).toBe("/profile");
+  });
+  it("preserves a local path, query, and fragment", () => {
+    expect(safeCallbackUrl("/profile?trend=loafer#upload")).toBe("/profile?trend=loafer#upload");
   });
 });
 
