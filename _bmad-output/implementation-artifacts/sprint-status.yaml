@@ -34,8 +34,8 @@ development_status:
   2-1-user-registration-login: done
   2-2-selfie-capture-profile-storage: done
   2-3-ai-virtual-try-on-generation: done
-  2-6-vto-result-history: review
-  2-7-vto-history-full-image-viewer: review
+  2-6-vto-result-history: done
+  2-7-vto-history-full-image-viewer: done
   2-4-vto-failure-handling: review
   2-5-retail-buy-now-links: backlog
   epic-2-retrospective: optional

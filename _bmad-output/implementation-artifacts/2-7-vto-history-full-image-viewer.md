@@ -4,7 +4,7 @@ baseline_commit: b6c07d0e2b6de68d73f25c9dd5ee15aff3dac896
 
 # Story 2.7: VTO History Full-Image Viewer
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Added 2026-08-17, post-launch — a direct follow-on to Story 2.6, requested once the history grid was live. Amends Story 2.6's AC4 ("no delete/re-trigger action, and clicking/tapping a thumbnail does nothing beyond what's already visible") — that boundary is deliberately superseded here, not violated by accident. See epics.md#Story 2.7. -->
@@ -18,7 +18,7 @@ so that I can actually inspect the details of a look I generated earlier, not ju
 ## Acceptance Criteria
 
 1. **Given** the "Past Try-Ons" grid (Story 2.6), **when** a user taps/clicks a tile, **then** that result opens full-size in a full-screen viewer over the current screen — no page navigation, no new data fetch, reusing the exact same signed `resultUrl` string the grid component already received as a prop.
-2. **Given** the full-size viewer is open, **when** the user pinches with two touch points, **then** the image zooms smoothly between 1x and 3x, centered on the pinch midpoint's baseline (mirroring `OverlayCanvas.tsx`'s existing two-pointer pinch pattern for scale — same clamp-and-baseline approach, not a new one).
+2. **Given** the full-size viewer is open, **when** the user pinches with two touch points, **then** the image zooms smoothly between 1x and 3x (mirroring `OverlayCanvas.tsx`'s existing two-pointer pinch pattern for scale — same clamp-and-baseline approach, not a new one), and **when** zoomed past 1x, **then** a single-pointer drag pans the image so every part of it is reachable — revised 2026-08-18 (code review) from an original "centered on the pinch midpoint" wording that turned out not to keep the full image reachable at high zoom; panning is the actual fix.
 3. **Given** the full-size viewer is open, **when** the user is on a non-touch input (mouse/keyboard) or simply prefers not to pinch, **then** a visible zoom control (a slider plus discrete `+`/`-` buttons) provides the identical 1x–3x range — no gesture-only control exists anywhere in this feature, matching the Accessibility Floor rule already established for `OverlayCanvas.tsx`'s scale control.
 4. **Given** the full-size viewer is open, **when** the user presses `Escape`, activates a visible close control, or clicks/taps the backdrop outside the image itself, **then** the viewer closes, zoom resets to 1x, and keyboard focus returns to the grid tile that opened it (not lost to `<body>`).
 5. **Given** this feature, **when** implemented, **then** it is entirely client-side: no new Route Handler, no new service/data-layer code, no new network request of any kind — the viewer only ever displays a `resultUrl` the grid already fetched.
@@ -43,6 +43,24 @@ so that I can actually inspect the details of a look I generated earlier, not ju
   - [x] Component-test `VtoResultViewer.tsx` (new `__tests__` file): renders with `role="dialog"`/`aria-modal="true"`; zoom starts at 1 and the range input reflects it; clicking `+`/dragging the range input increases zoom up to the 3x clamp and no further; clicking `-` decreases it down to the 1x clamp and no further; pressing `Escape` calls `onClose`; clicking the close button calls `onClose`; clicking the backdrop (outside the image) calls `onClose`; clicking the image itself does **not** call `onClose`. Simulate the two-pointer pinch sequence with `fireEvent.pointerDown`/`pointerMove` (two synthetic pointer ids) matching the pattern already used, if any, for `OverlayCanvas.test.tsx`'s own pinch coverage — check that file first for the established synthetic-pointer-event helper shape before writing a new one from scratch. *(Also needed `OverlayCanvas.test.tsx`'s `HTMLElement.prototype.setPointerCapture`/`releasePointerCapture`/`hasPointerCapture` polyfills, not just the `PointerEvent` constructor polyfill — jsdom implements neither; see Debug Log.)*
   - [x] Add one focus-management test: after closing the viewer (via any of the three close paths), the originating grid tile's button has focus (AC4) — use `@testing-library/react`'s `waitFor`/`toHaveFocus` against the specific button, not a generic "focus is somewhere in the document" assertion.
   - [x] Run `npm test`, `npm run lint`, `npm run build`. No live check is meaningful for this story — everything is a pure client-side rendering/interaction feature with zero new network calls (AC5); manual QA in a real browser (touch pinch specifically, since jsdom cannot fully simulate real multi-touch physics) is the only verification a unit test can't fully replace, and is worth doing once before marking this story reviewed, but doesn't require a real YouCam/Cloudinary round trip.
+
+### Review Findings
+
+_Code review 2026-08-18 (Blind Hunter + Edge Case Hunter + Acceptance Auditor, all findings verified against live code)._
+
+- [x] [Review][Patch] **Implement real panning so the full zoomed image is reachable** — resolved 2026-08-18 (option c): implemented drag-to-pan via single-pointer move when `zoom > 1x` (mirroring `OverlayCanvas.tsx`'s drag pattern), applied as `translate(pan.x, pan.y) scale(zoom)` on the image. Panning is deliberately unclamped (free drag) rather than bounds-checked against measured image/container dimensions — a reasonable v1 simplification since unclamped panning already fully solves reachability, and adding bounds math would be materially more code for no user-visible benefit. Pan resets to `{0,0}` whenever zoom returns to 1x. AC2 updated below to describe pan+zoom together [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] **Keep the full-screen overlay; document the actual "no modals" boundary in EXPERIENCE.md** — resolved 2026-08-18 (option a): added a "What 'no modals' actually covers" clarification to EXPERIENCE.md's Interaction Primitives (traces the rule to PRD FR-06/AD-6, both scoped to VTO failure handling — a decision-interrupt pattern the Full Image Viewer isn't), plus `{components.vto-history-grid}`/`{components.vto-result-viewer}` rows in Component Patterns and updated Profile's IA row [_bmad-output/planning-artifacts/ux-designs/ux-whattheheel-2026-08-17/EXPERIENCE.md]
+- [x] [Review][Patch] Added `touch-none` to the pinch/pan stage and switched it from `overflow-auto` to `overflow-hidden` (native scroll no longer does anything useful now that panning is JS-driven) [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] Backdrop click-during-drag fixed: guard on `event.target === event.currentTarget` plus a `gestureMovedRef` flag set by the stage's own pointermove handler — the target check alone doesn't catch the common-ancestor case the finding described, so both are needed together [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] Added a Tab/Shift+Tab focus trap scoped to the dialog's focusable elements (close button, zoom controls), wrapping at both ends [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] Zoom control rebuilt to match `OverlayCanvas.tsx`'s slider conventions: paired `<label>` with a static `htmlFor`, lime `focus-visible` ring, `min-h-11` target, and the value now lives in the label text (matching the established app-wide pattern) rather than a mutating `aria-label` [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] Added a fallback ("Image unavailable" message replacing the `<img>`) on load failure [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] `onChange` now checks `Number.isNaN` before calling `setZoomClamped`, so a non-numeric value is ignored rather than producing `scale(NaN)` [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] Added `onLostPointerCapture` and the non-primary-mouse-button skip, matching `OverlayCanvas.tsx` exactly [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] `transition-transform` now only applies when no pointer gesture is active (tracked via `activePointerCount`), so button/slider zoom stays smooth while pinch/pan tracks the pointer without lag [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] Range `step` changed to `0.01` (fine enough to make any button- or pinch-driven value valid) instead of trying to keep `ZOOM_STEP` and the slider's step in lockstep [app/components/VtoResultViewer.tsx]
+- [x] [Review][Patch] Rewrote pinch coverage: separate pinch-in/pinch-out tests with bounded (not just `>1`) assertions, an explicit lower-clamp test, new pan tests, a focus-trap test pair, and the three `HTMLElement.prototype` overrides now restored in `afterEach` [app/components/__tests__/VtoResultViewer.test.tsx]
+- [x] [Review][Defer] Uncommitted `OverlayCanvas.tsx` copy change sits in the working tree outside both stories' File Lists [app/components/OverlayCanvas.tsx] — deferred, belongs to concurrent Story 2.4 work
 
 ## Dev Notes
 
@@ -125,9 +143,12 @@ Claude (Sonnet 5)
 
 - `app/components/VtoHistoryGrid.tsx` (updated — interactive tiles, viewer mount, focus-return)
 - `app/components/__tests__/VtoHistoryGrid.test.tsx` (updated — replaced the now-obsolete "no interactive wrapper" test with open-viewer and focus-return coverage)
-- `app/components/VtoResultViewer.tsx` (new)
-- `app/components/__tests__/VtoResultViewer.test.tsx` (new)
+- `app/components/VtoResultViewer.tsx` (new; substantially reworked by the 2026-08-18 code review — panning, focus trap, touch-none, backdrop-drag fix, slider a11y, onError fallback)
+- `app/components/__tests__/VtoResultViewer.test.tsx` (new; rewritten by the 2026-08-18 code review with stronger pinch/pan/focus-trap coverage)
+- `lib/services/vtoTask.ts`, `lib/services/__tests__/vtoTask.test.tsx`, `lib/external/youcam.ts`, `lib/external/__tests__/youcam.test.tsx`, `lib/data/vtoTasks.ts`, `app/profile/page.tsx`, `app/profile/__tests__/page.test.tsx`, `app/components/VtoHistoryGrid.tsx`, `app/components/__tests__/VtoHistoryGrid.test.tsx` — touched by the 2026-08-18 code review's patches; owned/listed in full under Story 2.6's File List since that story created them
+- `_bmad-output/planning-artifacts/ux-designs/ux-whattheheel-2026-08-17/EXPERIENCE.md` (updated — modal-boundary clarification, `{components.vto-history-grid}`/`{components.vto-result-viewer}` rows, Profile IA row)
 
 ## Change Log
 
 - 2026-08-17: Implemented the VTO History Full-Image Viewer — tapping a Past Try-Ons tile now opens a full-screen, pinch/slider-zoomable view of that result, closable via Escape/close-button/backdrop with focus returned to the originating tile. Advanced the story to review.
+- 2026-08-18: Code review (with Story 2.6) found 2 High findings — the pinch/pan surface was missing `touch-none` (would not have worked on a real touch device) and zoom clipped ~half the image at high zoom with no way to reach it, since panning was never implemented — plus 10 Medium/Low findings (backdrop-close-during-drag, no focus trap, non-semantic zoom control, missing `onError` fallback, `scale(NaN)` on invalid input, missing pinch guards, transition lag, step-grid mismatch, weak pinch test assertions, the unresolved "no modals" documentation gap). All patched, including implementing real drag-to-pan (AC2 wording revised accordingly) and adding the EXPERIENCE.md clarification that resolves the modal-boundary question in favor of keeping the overlay. 1 pre-existing item (an unrelated uncommitted `OverlayCanvas.tsx` change) deferred to `deferred-work.md`. Full suite (269 tests), lint, and build all green. Advanced to done.

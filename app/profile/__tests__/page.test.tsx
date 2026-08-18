@@ -56,10 +56,21 @@ describe("ProfilePage authenticated continuation", () => {
     expect(screen.getByText("Past Try-Ons")).toBeInTheDocument();
   });
 
-  it("omits the Past Try-Ons section entirely when there is no VTO history", async () => {
+  it("omits the Past Try-Ons section entirely when there is no VTO history, including no dead spacer element", async () => {
+    const element = await ProfilePage({ searchParams: Promise.resolve({}) } as never);
+    const { container } = render(element);
+    expect(screen.queryByText("Past Try-Ons")).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".mt-6")).toHaveLength(2); // selfie-upload + sign-out spacers only, no history spacer
+  });
+
+  it("degrades to no-history rendering (not a page failure) when the history read throws", async () => {
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    jest.mocked(getVtoHistory).mockRejectedValue(new Error("mongo unavailable"));
     const element = await ProfilePage({ searchParams: Promise.resolve({}) } as never);
     render(element);
     expect(screen.queryByText("Past Try-Ons")).not.toBeInTheDocument();
+    expect(screen.getByText("a@b.com")).toBeInTheDocument();
+    consoleSpy.mockRestore();
   });
 
   it("shows a Continue to AI Stylist link when a known trend is carried over and a selfie is saved", async () => {

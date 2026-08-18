@@ -4,7 +4,7 @@ import { getDb } from "@/lib/data/mongodb";
 export interface VtoTaskDocument {
   taskId: string;
   userId: string;
-  trendId: string;
+  trendId?: string;
   status: "pending" | "success" | "error";
   errorCode?: string;
   srcUrl: string;

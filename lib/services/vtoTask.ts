@@ -6,8 +6,14 @@ import { getPrivateSelfieUrl, uploadVtoResult } from "@/lib/external/cloudinary"
 import { createShoesTask, downloadResultImage, getTaskStatus } from "@/lib/external/youcam";
 import { requireAuthenticatedUser } from "@/lib/services/auth";
 
+// This module pulls in Mongo, Cloudinary, and the YouCam client — never let a
+// non-type import from a Client Component (e.g. VtoHistoryGrid.tsx) bundle it.
+if (typeof window !== "undefined") {
+  throw new Error("lib/services/vtoTask.ts must not be imported into client-side code.");
+}
+
 // AC1: `epics.md` resolved "no style picker" — every task uses this single
-// fixed default; the client never sends or sees it.
+// fixed default; the client never sees or sends it.
 const STYLE = "random";
 
 // Confirmed live: a real task took long enough in YouCam's queue that the
@@ -15,6 +21,14 @@ const STYLE = "random";
 // expired before YouCam fetched it, producing a real `error_download_image`.
 // 30 minutes gives real queue latency comfortable headroom.
 const SELFIE_URL_LIFETIME_SECONDS = 1800;
+
+// Same reasoning as SELFIE_URL_LIFETIME_SECONDS above: a result URL can be
+// handed to a freshly rendered Profile page and reused later by the history
+// viewer (Story 2.7, no re-fetch) without an intervening request, so it needs
+// more headroom than the 300s default tuned for an immediate render.
+const RESULT_URL_LIFETIME_SECONDS = 1800;
+
+const RESULT_COPY_FAILED_CODE = "vto_result_copy_failed";
 
 const ERROR_COPY: Record<string, string> = {
   error_no_face: "We couldn't detect a face — try a front-facing selfie with good lighting.",
@@ -129,19 +143,39 @@ export async function getVtoTaskStatus(taskId: string): Promise<VtoTaskView> {
   if (result.status === "success") {
     // AD-8: YouCam retains results for only ~24h, so copy to durable storage
     // the moment success is observed — never store/serve the raw YouCam URL.
-    const buffer = await downloadResultImage(result.resultUrl);
-    const uploaded = await uploadVtoResult(buffer);
+    // A download/upload failure here must not strand the task at `pending`
+    // forever (Review Finding, Story 2.6): fall through to the same
+    // error-terminal path as a real YouCam error, using an app-internal code
+    // that isn't in ERROR_COPY, so it resolves to the generic fallback copy
+    // and the user gets the existing "try another photo" retry.
+    let uploaded: { publicId: string; format: string } | undefined;
+    try {
+      const buffer = await downloadResultImage(result.resultUrl);
+      const upload = await uploadVtoResult(buffer);
+      if (upload.format) uploaded = { publicId: upload.publicId, format: upload.format };
+    } catch {
+      uploaded = undefined;
+    }
+
+    if (!uploaded) {
+      const updated = await updateTaskStatus(taskId, { status: "error", errorCode: RESULT_COPY_FAILED_CODE });
+      if (updated) return { taskId, status: "error", message: resolveErrorMessage(RESULT_COPY_FAILED_CODE) };
+      return reconcileAfterLostRace(taskId, user.id);
+    }
+
     const updated = await updateTaskStatus(taskId, {
       status: "success",
       resultPublicId: uploaded.publicId,
       resultFormat: uploaded.format,
     });
     if (updated) {
-      return { taskId, status: "success", resultUrl: getPrivateSelfieUrl(uploaded.publicId, uploaded.format, Date.now()) };
+      return {
+        taskId,
+        status: "success",
+        resultUrl: getPrivateSelfieUrl(uploaded.publicId, uploaded.format, Date.now(), RESULT_URL_LIFETIME_SECONDS),
+      };
     }
-    const authoritative = await findTaskById(taskId);
-    if (!authoritative || authoritative.userId !== user.id) throw new TaskNotFoundError();
-    return toView(authoritative);
+    return reconcileAfterLostRace(taskId, user.id);
   }
 
   const updated = await updateTaskStatus(taskId, { status: "error", errorCode: result.errorCode });
@@ -149,8 +183,12 @@ export async function getVtoTaskStatus(taskId: string): Promise<VtoTaskView> {
     console.error("vto_invalid_parameter", { correlationId: randomUUID(), taskId });
   }
   if (updated) return { taskId, status: "error", message: resolveErrorMessage(result.errorCode) };
+  return reconcileAfterLostRace(taskId, user.id);
+}
+
+async function reconcileAfterLostRace(taskId: string, userId: string): Promise<VtoTaskView> {
   const authoritative = await findTaskById(taskId);
-  if (!authoritative || authoritative.userId !== user.id) throw new TaskNotFoundError();
+  if (!authoritative || authoritative.userId !== userId) throw new TaskNotFoundError();
   return toView(authoritative);
 }
 
@@ -160,7 +198,7 @@ function toView(task: VtoTaskDocument): VtoTaskView {
   }
   const resultUrl =
     task.status === "success" && task.resultPublicId && task.resultFormat
-      ? getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now())
+      ? getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now(), RESULT_URL_LIFETIME_SECONDS)
       : undefined;
   return { taskId: task.taskId, status: task.status, resultUrl };
 }
@@ -183,12 +221,13 @@ export async function getVtoHistory(): Promise<VtoHistoryItem[]> {
   const items: VtoHistoryItem[] = [];
   for (const task of tasks) {
     if (!task.trendId || !task.resultPublicId || !task.resultFormat) continue;
+    if (!(task.createdAt instanceof Date) || Number.isNaN(task.createdAt.getTime())) continue;
     const trend = getTrendById(task.trendId);
     if (!trend) continue;
     items.push({
       taskId: task.taskId,
       trendLabel: trend.label,
-      resultUrl: getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now()),
+      resultUrl: getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now(), RESULT_URL_LIFETIME_SECONDS),
       createdAt: task.createdAt.toISOString(),
     });
   }

@@ -134,24 +134,46 @@ export async function getTaskStatus(taskId: string): Promise<TaskStatusResult> {
   throw new YouCamApiError("youcam_unexpected_response", "YouCam returned an unknown task status.");
 }
 
+const MAX_RESULT_IMAGE_BYTES = 25_000_000;
+
 // YouCam retains processed results for only ~24 hours (docs/ai-skin-analysis.md),
 // so a durable history feature must fetch this once and copy it elsewhere
 // immediately — see lib/services/vtoTask.ts's copy-on-success step (AD-8).
 export async function downloadResultImage(url: string): Promise<Buffer> {
-  let response: Response;
   try {
-    response = await fetch(url, { signal: AbortSignal.timeout(YOUCAM_TIMEOUT_MS) });
-  } catch {
+    const response = await fetch(url, { signal: AbortSignal.timeout(YOUCAM_TIMEOUT_MS) });
+
+    if (!response.ok) {
+      throw new YouCamApiError(
+        "youcam_result_download_failed",
+        `Downloading the try-on result image failed with status ${response.status}.`,
+      );
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.startsWith("image/")) {
+      throw new YouCamApiError(
+        "youcam_result_download_failed",
+        `Expected an image result but got content-type "${contentType}".`,
+      );
+    }
+
+    const contentLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > MAX_RESULT_IMAGE_BYTES) {
+      throw new YouCamApiError("youcam_result_download_failed", "The try-on result image was unexpectedly large.");
+    }
+
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength === 0) {
+      throw new YouCamApiError("youcam_result_download_failed", "The try-on result image was empty.");
+    }
+    if (bytes.byteLength > MAX_RESULT_IMAGE_BYTES) {
+      throw new YouCamApiError("youcam_result_download_failed", "The try-on result image was unexpectedly large.");
+    }
+
+    return Buffer.from(bytes);
+  } catch (cause) {
+    if (cause instanceof YouCamApiError) throw cause;
     throw new YouCamApiError("youcam_result_download_failed", "Could not download the try-on result image.");
   }
-
-  if (!response.ok) {
-    throw new YouCamApiError(
-      "youcam_result_download_failed",
-      `Downloading the try-on result image failed with status ${response.status}.`,
-    );
-  }
-
-  const bytes = await response.arrayBuffer();
-  return Buffer.from(bytes);
 }

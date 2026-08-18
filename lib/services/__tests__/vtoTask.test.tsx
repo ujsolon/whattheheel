@@ -206,6 +206,68 @@ describe("getVtoTaskStatus", () => {
     expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: "https://signed.test/folder/result-id" });
   });
 
+  it("signs the result URL with the extended (non-default) lifetime, not the 300s default", async () => {
+    jest.mocked(findTaskById).mockResolvedValue(storedTask);
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "success", resultUrl: "https://cdn.test/result.jpg" });
+
+    await getVtoTaskStatus("task-1");
+
+    expect(getPrivateSelfieUrl).toHaveBeenCalledWith("folder/result-id", "jpg", expect.any(Number), 1800);
+  });
+
+  it("marks the task error (not stuck pending) when the download step fails, using an app-internal code that resolves to the generic fallback copy", async () => {
+    jest.mocked(findTaskById).mockResolvedValue(storedTask);
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "success", resultUrl: "https://cdn.test/result.jpg" });
+    jest.mocked(downloadResultImage).mockRejectedValue(new Error("network blip"));
+
+    const result = await getVtoTaskStatus("task-1");
+
+    expect(uploadVtoResult).not.toHaveBeenCalled();
+    expect(updateTaskStatus).toHaveBeenCalledWith("task-1", { status: "error", errorCode: "vto_result_copy_failed" });
+    expect(result).toEqual({
+      taskId: "task-1",
+      status: "error",
+      message: "Something went wrong generating your preview — please try again.",
+    });
+  });
+
+  it("marks the task error when the Cloudinary upload step fails", async () => {
+    jest.mocked(findTaskById).mockResolvedValue(storedTask);
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "success", resultUrl: "https://cdn.test/result.jpg" });
+    jest.mocked(uploadVtoResult).mockRejectedValue(new Error("cloudinary down"));
+
+    const result = await getVtoTaskStatus("task-1");
+
+    expect(updateTaskStatus).toHaveBeenCalledWith("task-1", { status: "error", errorCode: "vto_result_copy_failed" });
+    expect(result.status).toBe("error");
+  });
+
+  it("marks the task error when Cloudinary returns no usable format", async () => {
+    jest.mocked(findTaskById).mockResolvedValue(storedTask);
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "success", resultUrl: "https://cdn.test/result.jpg" });
+    jest.mocked(uploadVtoResult).mockResolvedValue({ secureUrl: "https://cloud.test/x", publicId: "folder/x", format: "" });
+
+    const result = await getVtoTaskStatus("task-1");
+
+    expect(updateTaskStatus).toHaveBeenCalledWith("task-1", { status: "error", errorCode: "vto_result_copy_failed" });
+    expect(result.status).toBe("error");
+  });
+
+  it("reconciles to the authoritative terminal state when marking the copy-failure loses the update race", async () => {
+    jest.mocked(findTaskById)
+      .mockResolvedValueOnce(storedTask)
+      .mockResolvedValueOnce({ ...storedTask, status: "success", resultPublicId: "folder/winner-id", resultFormat: "png" });
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "success", resultUrl: "https://cdn.test/result.jpg" });
+    jest.mocked(downloadResultImage).mockRejectedValue(new Error("network blip"));
+    jest.mocked(updateTaskStatus).mockResolvedValue(false);
+
+    await expect(getVtoTaskStatus("task-1")).resolves.toEqual({
+      taskId: "task-1",
+      status: "success",
+      resultUrl: "https://signed.test/folder/winner-id",
+    });
+  });
+
   it("persists and returns an error transition", async () => {
     jest.mocked(findTaskById).mockResolvedValue(storedTask);
     jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode: "error_no_face" });
@@ -374,5 +436,24 @@ describe("getVtoHistory", () => {
     jest.mocked(getTrendById).mockReturnValue(undefined);
     jest.mocked(findSuccessfulTasksByUser).mockResolvedValue([successfulTask]);
     await expect(getVtoHistory()).resolves.toEqual([]);
+  });
+
+  it("filters out a task with a missing or invalid createdAt instead of throwing", async () => {
+    const missingDate = { ...successfulTask, taskId: "task-missing-date", createdAt: undefined };
+    const invalidDate = { ...successfulTask, taskId: "task-invalid-date", createdAt: new Date("not-a-date") };
+    jest.mocked(findSuccessfulTasksByUser).mockResolvedValue([missingDate as never, invalidDate as never, successfulTask]);
+
+    const result = await getVtoHistory();
+
+    expect(result).toHaveLength(1);
+    expect(result[0].taskId).toBe("task-1");
+  });
+
+  it("signs history result URLs with the extended lifetime, not the 300s default", async () => {
+    jest.mocked(findSuccessfulTasksByUser).mockResolvedValue([successfulTask]);
+
+    await getVtoHistory();
+
+    expect(getPrivateSelfieUrl).toHaveBeenCalledWith("folder/result-id", "jpg", expect.any(Number), 1800);
   });
 });

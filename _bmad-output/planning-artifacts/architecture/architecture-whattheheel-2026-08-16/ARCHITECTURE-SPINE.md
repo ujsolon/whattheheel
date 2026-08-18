@@ -184,6 +184,7 @@ erDiagram
     string srcCloudinaryUrl
     string refCloudinaryUrl
     string resultPublicId
+    string resultFormat
     string style
   }
   TREND {

@@ -35,3 +35,15 @@
 ## Deferred from: code review of 2-3-ai-virtual-try-on-generation (2026-08-17)
 
 - Orphan-task handling after YouCam accepts a billable task but Mongo persistence fails. Accepted for hackathon scope due to low expected volume, disproportionate reconciliation complexity, and limited time before submission. A future production-hardening pass should introduce durable initiation/idempotency or reconciliation.
+
+## Deferred from: code review of 2-6-vto-result-history (2026-08-18)
+
+- **Unbounded history query** (`lib/data/vtoTasks.ts:62`) — `find({ userId, status: "success" }).sort({ createdAt: -1 })` has no `.limit()`, no `{ userId, status }` index, and sorts on an unindexed field. Every Profile render pulls every successful task, generates one Cloudinary signature per document, and emits one full-size `<img>` per document on a mobile-first page. Story 2.6 explicitly declined the index at hackathon data volume; add `.limit(N)` plus the compound index before the collection grows.
+- **Pre-deploy successful tasks lose their result on the `/stylist` reload path** (`lib/services/vtoTask.ts:161-165`) — AC5 documented these dropping out of *history*; unstated is that `toView()` now returns `resultUrl: undefined` for them, so a result the user could see before this deploy is also gone from the stylist screen on reload. The old `resultUrl` value still sits in Mongo, read by no code path. Accepted data-migration tradeoff at demo scale.
+- **`VtoHistoryItem.createdAt` is dead payload** (`lib/services/vtoTask.ts:192`) — computed, ISO-serialized with a paragraph of justifying Dev Notes, and rendered by no consumer. Harmless; likely useful if history ever displays dates or re-sorts client-side.
+- **`youcam_result_download_failed` sits outside the AD-6 locked error contract** (`lib/external/youcam.ts:145`) — the new code surfaces through the route's 502 branch as the "lost the connection" copy, which EXPERIENCE.md reserves for a failed poll *request*; here the poll succeeded and the durable-copy step failed. Story 2.4 owns the error-copy map and is the right place to absorb this code.
+- **No `deleteVtoResult` anywhere** (`lib/external/cloudinary.ts`) — the module exports `deleteSelfie` but VTO result assets are never deleted under any circumstance, including the race-loser upload path, selfie replacement, or future account deletion. Story 2.6 accepted orphaned assets; revisit with account-deletion work or if Cloudinary storage cost becomes material.
+
+## Deferred from: code review of 2-7-vto-history-full-image-viewer (2026-08-18)
+
+- **Uncommitted `OverlayCanvas.tsx` copy change outside both stories' File Lists** (`app/components/OverlayCanvas.tsx`) — a working-tree edit ("Love the direction?" → "Want a better way to try these on?") that appears in neither reviewed story. Belongs to concurrent Story 2.4 work; attribute it there or revert before either story is marked done.

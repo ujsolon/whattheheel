@@ -47,4 +47,25 @@ describe("VtoHistoryGrid", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(tile).toHaveFocus();
   });
+
+  it("exposes the section title as a real heading for screen-reader navigation", () => {
+    render(
+      <VtoHistoryGrid
+        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z" }]}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Past Try-Ons" })).toBeInTheDocument();
+  });
+
+  it("replaces a tile with a fallback placeholder when its image fails to load, without crashing", () => {
+    render(
+      <VtoHistoryGrid
+        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/expired.jpg", createdAt: "2026-01-02T00:00:00.000Z" }]}
+      />,
+    );
+    fireEvent.error(screen.getByAltText("Your past try-on: Chunky Platform Loafer"));
+    expect(screen.queryByAltText("Your past try-on: Chunky Platform Loafer")).not.toBeInTheDocument();
+    expect(screen.getByText("Image unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Chunky Platform Loafer")).toBeInTheDocument();
+  });
 });
