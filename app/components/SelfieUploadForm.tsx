@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 interface ProfileView { email: string; selfieUrl: string | null; updatedAt: string | null }
+interface SelfieUploadFormProps { initialProfile: ProfileView; onSaved?: () => void }
 const guidance = "Use a clear, front-facing solo photo from the top of your head to your chest. JPG or PNG; at least 512 × 512px; under 10MB.";
 
-export function SelfieUploadForm({ initialProfile }: { initialProfile: ProfileView }) {
+export function SelfieUploadForm({ initialProfile, onSaved }: SelfieUploadFormProps) {
   const [profile, setProfile] = useState(initialProfile); const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null); const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null); const [error, setError] = useState<string | null>(null);
@@ -22,7 +23,7 @@ export function SelfieUploadForm({ initialProfile }: { initialProfile: ProfileVi
   async function submit(event: FormEvent) {
     event.preventDefault(); if (!file) { setError("Choose a selfie to upload."); return; }
     setPending(true); setError(null); setMessage(null);
-    try { const body = new FormData(); body.append("selfie", file); const response = await fetch("/api/upload", { method: "POST", body }); const result = await response.json(); if (!response.ok) { setError(result?.error?.message ?? "We couldn't save your selfie — please try again."); return; } setProfile(result.data.profile); setMessage("Selfie saved."); setFile(null); if (preview) URL.revokeObjectURL(preview); setPreview(null); if (inputRef.current) inputRef.current.value = ""; }
+    try { const body = new FormData(); body.append("selfie", file); const response = await fetch("/api/upload", { method: "POST", body }); const result = await response.json(); if (!response.ok) { setError(result?.error?.message ?? "We couldn't save your selfie — please try again."); return; } setProfile(result.data.profile); setMessage("Selfie saved."); onSaved?.(); setFile(null); if (preview) URL.revokeObjectURL(preview); setPreview(null); if (inputRef.current) inputRef.current.value = ""; }
     catch { setError("We couldn't save your selfie — please try again."); } finally { setPending(false); }
   }
   return <form onSubmit={submit} className="flex flex-col gap-4">

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getTrendById } from "@/lib/data/trends";
 import { findProfile, setGenderPreference } from "@/lib/data/userProfiles";
 import { createTask, findSuccessfulTasksByUser, findTaskById, updateTaskStatus, type VtoTaskDocument } from "@/lib/data/vtoTasks";
@@ -14,6 +15,14 @@ const STYLE = "random";
 // expired before YouCam fetched it, producing a real `error_download_image`.
 // 30 minutes gives real queue latency comfortable headroom.
 const SELFIE_URL_LIFETIME_SECONDS = 1800;
+
+const ERROR_COPY: Record<string, string> = {
+  error_no_face: "We couldn't detect a face — try a front-facing selfie with good lighting.",
+  error_download_image: "We couldn't load one of the images — please try uploading again.",
+  error_inference: "Something went wrong generating your preview — please try again.",
+  error_nsfw_content_detected: "This image can't be used — please choose a different photo.",
+  exceed_max_filesize: "That image is too large (max 10MB) — please choose a smaller file.",
+};
 
 export class NoSelfieError extends Error {
   constructor() {
@@ -47,7 +56,7 @@ export interface VtoTaskView {
   taskId: string;
   status: "pending" | "success" | "error";
   resultUrl?: string;
-  errorCode?: string;
+  message?: string;
 }
 
 export async function createVtoTask(
@@ -136,18 +145,28 @@ export async function getVtoTaskStatus(taskId: string): Promise<VtoTaskView> {
   }
 
   const updated = await updateTaskStatus(taskId, { status: "error", errorCode: result.errorCode });
-  if (updated) return { taskId, status: "error", errorCode: result.errorCode };
+  if (result.errorCode === "invalid_parameter") {
+    console.error("vto_invalid_parameter", { correlationId: randomUUID(), taskId });
+  }
+  if (updated) return { taskId, status: "error", message: resolveErrorMessage(result.errorCode) };
   const authoritative = await findTaskById(taskId);
   if (!authoritative || authoritative.userId !== user.id) throw new TaskNotFoundError();
   return toView(authoritative);
 }
 
 function toView(task: VtoTaskDocument): VtoTaskView {
+  if (task.status === "error") {
+    return { taskId: task.taskId, status: "error", message: resolveErrorMessage(task.errorCode) };
+  }
   const resultUrl =
     task.status === "success" && task.resultPublicId && task.resultFormat
       ? getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now())
       : undefined;
-  return { taskId: task.taskId, status: task.status, resultUrl, errorCode: task.errorCode };
+  return { taskId: task.taskId, status: task.status, resultUrl };
+}
+
+function resolveErrorMessage(errorCode?: string): string {
+  return (errorCode && ERROR_COPY[errorCode]) ?? ERROR_COPY.error_inference;
 }
 
 export interface VtoHistoryItem {

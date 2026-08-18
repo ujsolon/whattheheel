@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { TrendCard } from "@/app/components/TrendCard";
+import { SelfieUploadForm } from "@/app/components/SelfieUploadForm";
 import type { Trend } from "@/lib/data/trends";
 
 const POLL_INTERVAL_MS = 2000;
@@ -21,14 +22,16 @@ const STATUS_COPY = [
 
 const GENERIC_ERROR_COPY = "Something went wrong generating your preview — please try again.";
 const CONNECTION_ERROR_COPY = "We lost the connection — tap to retry.";
+const EMPTY_PROFILE = { email: "", selfieUrl: null, updatedAt: null };
 
 interface VtoStylistProps {
   initialTrend: Trend | undefined;
   initialGender: "female" | "male" | null;
   trends: Trend[];
+  initialProfile?: { email: string; selfieUrl: string | null; updatedAt: string | null };
 }
 
-type Phase = "idle" | "pending" | "success" | "error";
+type Phase = "idle" | "pending" | "success" | "error" | "reupload";
 type ErrorKind = "generation" | "connection";
 
 function subscribeToReducedMotion(callback: () => void) {
@@ -49,11 +52,12 @@ function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribeToReducedMotion, getReducedMotionSnapshot, getReducedMotionServerSnapshot);
 }
 
-export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistProps) {
+export function VtoStylist({ initialTrend, initialGender, trends, initialProfile = EMPTY_PROFILE }: VtoStylistProps) {
   const [selectedTrend, setSelectedTrend] = useState<Trend | undefined>(initialTrend);
   const [gender, setGender] = useState<"female" | "male" | null>(initialGender);
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorKind, setErrorKind] = useState<ErrorKind>("generation");
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [resultUrl, setResultUrl] = useState<string | undefined>(undefined);
   const [statusIndex, setStatusIndex] = useState(0);
   const [showLongWait, setShowLongWait] = useState(false);
@@ -86,6 +90,7 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
     pollSessionRef.current += 1;
     clearTimers();
     setErrorKind("connection");
+    setErrorMessage(undefined);
     setPhase("error");
   }
 
@@ -111,7 +116,7 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
         handlePollFailure(taskId, session);
         return;
       }
-      const body: { data?: { status?: string; resultUrl?: string } } = await response.json();
+      const body: { data?: { status?: string; resultUrl?: string; message?: string } } = await response.json();
       const status = body.data?.status;
 
       if (reducedMotion) setStatusIndex((current) => (current + 1) % STATUS_COPY.length);
@@ -119,6 +124,7 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
       if (status === "success") {
         if (!body.data?.resultUrl) {
           setErrorKind("generation");
+          setErrorMessage(undefined);
           clearTimers();
           setPhase("error");
           return;
@@ -129,6 +135,7 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
       } else if (status === "error") {
         clearTimers();
         setErrorKind("generation");
+        setErrorMessage(body.data?.message);
         setPhase("error");
       } else if (status === "pending") {
         consecutiveFailuresRef.current = 0;
@@ -166,6 +173,7 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
     setPhase("pending");
     setStatusIndex(0);
     setShowLongWait(false);
+    setErrorMessage(undefined);
 
     try {
       const response = await fetch("/api/vto-tasks", {
@@ -175,6 +183,7 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
       });
       if (!response.ok) {
         setErrorKind("generation");
+        setErrorMessage(undefined);
         setPhase("error");
         return;
       }
@@ -182,6 +191,7 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
       const taskId = body.data?.taskId;
       if (!taskId) {
         setErrorKind("generation");
+        setErrorMessage(undefined);
         setPhase("error");
         return;
       }
@@ -189,6 +199,7 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
       startPolling(taskId);
     } catch {
       setErrorKind("generation");
+      setErrorMessage(undefined);
       setPhase("error");
     }
   }
@@ -202,7 +213,17 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
     clearTimers();
     activeTaskIdRef.current = undefined;
     setResultUrl(undefined);
+    setErrorMessage(undefined);
     setPhase("idle");
+  }
+
+  function reupload() {
+    pollSessionRef.current += 1;
+    clearTimers();
+    activeTaskIdRef.current = undefined;
+    setResultUrl(undefined);
+    setErrorMessage(undefined);
+    setPhase("reupload");
   }
 
   return (
@@ -293,16 +314,26 @@ export function VtoStylist({ initialTrend, initialGender, trends }: VtoStylistPr
       {phase === "error" && (
         <div className="flex flex-col gap-2">
           <p role="alert" className="border-[3px] border-error bg-surface-muted p-3 text-sm text-white">
-            {errorKind === "connection" ? CONNECTION_ERROR_COPY : GENERIC_ERROR_COPY}
+            {errorKind === "connection" ? CONNECTION_ERROR_COPY : (errorMessage ?? GENERIC_ERROR_COPY)}
           </p>
           <button
             type="button"
-            onClick={retry}
+            onClick={errorKind === "connection" ? retry : reupload}
             className="min-h-11 bg-lime px-4 py-2 font-black uppercase text-ink focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
           >
             {errorKind === "connection" ? "Retry" : "Try another photo"}
           </button>
         </div>
+      )}
+
+      {phase === "reupload" && (
+        <SelfieUploadForm
+          initialProfile={initialProfile}
+          onSaved={() => {
+            setErrorMessage(undefined);
+            setPhase("idle");
+          }}
+        />
       )}
     </div>
   );

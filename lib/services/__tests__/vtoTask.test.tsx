@@ -160,6 +160,7 @@ describe("getVtoTaskStatus", () => {
     jest.mocked(downloadResultImage).mockResolvedValue(Buffer.from("result-bytes"));
     jest.mocked(uploadVtoResult).mockResolvedValue({ secureUrl: "https://cloud.test/result-asset", publicId: "folder/result-id", format: "jpg" });
     jest.mocked(getPrivateSelfieUrl).mockImplementation((publicId) => `https://signed.test/${publicId}`);
+    jest.mocked(updateTaskStatus).mockResolvedValue(true);
   });
 
   it("rejects when unauthenticated", async () => {
@@ -210,7 +211,74 @@ describe("getVtoTaskStatus", () => {
     jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode: "error_no_face" });
     const result = await getVtoTaskStatus("task-1");
     expect(updateTaskStatus).toHaveBeenCalledWith("task-1", { status: "error", errorCode: "error_no_face" });
-    expect(result).toEqual({ taskId: "task-1", status: "error", errorCode: "error_no_face" });
+    expect(result).toEqual({
+      taskId: "task-1",
+      status: "error",
+      message: "We couldn't detect a face — try a front-facing selfie with good lighting.",
+    });
+    expect(result).not.toHaveProperty("errorCode");
+  });
+
+  it.each([
+    ["error_no_face", "We couldn't detect a face — try a front-facing selfie with good lighting."],
+    ["error_download_image", "We couldn't load one of the images — please try uploading again."],
+    ["error_inference", "Something went wrong generating your preview — please try again."],
+    ["error_nsfw_content_detected", "This image can't be used — please choose a different photo."],
+    ["exceed_max_filesize", "That image is too large (max 10MB) — please choose a smaller file."],
+  ])("maps stored YouCam error %s to locked copy without exposing the code", async (errorCode, message) => {
+    jest.mocked(findTaskById).mockResolvedValue(storedTask);
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode });
+
+    const result = await getVtoTaskStatus("task-1");
+
+    expect(result).toEqual({ taskId: "task-1", status: "error", message });
+    expect(result).not.toHaveProperty("errorCode");
+  });
+
+  it.each(["something_new"])(
+    "uses generic inference copy for unmapped code %s without exposing it",
+    async (errorCode) => {
+      jest.mocked(findTaskById).mockResolvedValue(storedTask);
+      jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode });
+
+      const result = await getVtoTaskStatus("task-1");
+
+      expect(result).toEqual({
+        taskId: "task-1",
+        status: "error",
+        message: "Something went wrong generating your preview — please try again.",
+      });
+      expect(result).not.toHaveProperty("errorCode");
+    },
+  );
+
+  it("logs invalid_parameter server-side with operational context only", async () => {
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    jest.mocked(findTaskById).mockResolvedValue(storedTask);
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode: "invalid_parameter" });
+
+    await expect(getVtoTaskStatus("task-1")).resolves.toEqual({
+      taskId: "task-1",
+      status: "error",
+      message: "Something went wrong generating your preview — please try again.",
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith("vto_invalid_parameter", {
+      correlationId: expect.any(String),
+      taskId: "task-1",
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it("maps an already-persisted terminal error through the same locked-copy contract", async () => {
+    jest.mocked(findTaskById).mockResolvedValue({ ...storedTask, status: "error", errorCode: "error_download_image" });
+
+    await expect(getVtoTaskStatus("task-1")).resolves.toEqual({
+      taskId: "task-1",
+      status: "error",
+      message: "We couldn't load one of the images — please try uploading again.",
+    });
+    expect(getTaskStatus).not.toHaveBeenCalled();
   });
 
   it("returns the authoritative terminal state when another poll wins the update race", async () => {

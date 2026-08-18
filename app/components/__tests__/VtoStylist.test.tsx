@@ -4,6 +4,7 @@ import { VtoStylist } from "@/app/components/VtoStylist";
 
 const trend = { id: "chunky-platform-loafer", label: "Chunky Platform Loafer", shoeImageUrl: "/trends/chunky-platform-loafer.png", buyUrl: null };
 const otherTrend = { id: "burgundy-western-boot", label: "Burgundy Western Boot", shoeImageUrl: "/trends/burgundy-western-boot.png", buyUrl: null };
+const profile = { email: "a@b.com", selfieUrl: "https://example.test/selfie.jpg", updatedAt: "2026-08-18T00:00:00.000Z" };
 
 function jsonResponse(body: unknown, ok = true) {
   return { ok, json: async () => body } as Response;
@@ -13,6 +14,8 @@ describe("VtoStylist", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     global.fetch = jest.fn();
+    global.URL.createObjectURL = jest.fn(() => "blob:preview");
+    global.URL.revokeObjectURL = jest.fn();
   });
 
   afterEach(() => {
@@ -118,6 +121,44 @@ describe("VtoStylist", () => {
     expect(screen.getByRole("button", { name: /try another photo|retry/i })).toBeInTheDocument();
   });
 
+  it("renders the exact server-resolved copy for a terminal YouCam error", async () => {
+    const lockedCopy = "We couldn't detect a face — try a front-facing selfie with good lighting.";
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "error", message: lockedCopy } }));
+
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(lockedCopy);
+    expect(screen.getByRole("button", { name: "Try another photo" })).toBeInTheDocument();
+  });
+
+  it("reopens the selfie uploader inline and preserves trend and gender after a successful save", async () => {
+    const lockedCopy = "We couldn't detect a face — try a front-facing selfie with good lighting.";
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "error", message: lockedCopy } }))
+      .mockResolvedValueOnce(
+        jsonResponse({ data: { profile: { ...profile, selfieUrl: "https://example.test/replacement.jpg" } } }),
+      );
+
+    render(<VtoStylist initialTrend={trend} initialGender={null} trends={[trend]} initialProfile={profile} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Feminine" }));
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Try another photo" }));
+
+    const picker = screen.getByLabelText("Add/change photo");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    fireEvent.change(picker, { target: { files: [new File(["photo"], "replacement.jpg", { type: "image/jpeg" })] } });
+    fireEvent.click(screen.getByRole("button", { name: "Save selfie" }));
+
+    expect(await screen.findByRole("button", { name: /try it on/i })).toBeEnabled();
+    expect(screen.getByText("Chunky Platform Loafer")).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Feminine" })).not.toBeInTheDocument();
+  });
+
   it("shows long-wait feedback at 30s and the lost-connection treatment at the 90s ceiling", async () => {
     (global.fetch as jest.Mock).mockResolvedValue(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
 
@@ -134,7 +175,7 @@ describe("VtoStylist", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
-  it("retry resets to idle, ready to trigger again", async () => {
+  it("a terminal generation error opens the inline selfie uploader", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
     (global.fetch as jest.Mock).mockResolvedValue(
@@ -150,7 +191,7 @@ describe("VtoStylist", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /try another photo|retry/i }));
 
-    expect(screen.getByRole("button", { name: /try it on/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Add/change photo")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

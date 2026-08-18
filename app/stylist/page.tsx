@@ -37,7 +37,7 @@ export default async function StylistPage({ searchParams }: PageProps<"/stylist"
       <main className="mx-auto w-full max-w-[480px] px-4 pb-28 pt-10 lg:pb-16">
         <h1 className="text-3xl font-black">AI Stylist</h1>
         <div className="mt-6">
-          <VtoStylist initialTrend={trend} initialGender={profile.gender} trends={getTrends()} />
+          <VtoStylist initialTrend={trend} initialGender={profile.gender} trends={getTrends()} initialProfile={profile} />
         </div>
       </main>
       <AppNavigation current="AI Stylist" />
