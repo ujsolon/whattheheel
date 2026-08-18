@@ -4,6 +4,7 @@ import { VtoStylist } from "@/app/components/VtoStylist";
 
 const trend = { id: "chunky-platform-loafer", label: "Chunky Platform Loafer", shoeImageUrl: "/trends/chunky-platform-loafer.png", buyUrl: null };
 const otherTrend = { id: "burgundy-western-boot", label: "Burgundy Western Boot", shoeImageUrl: "/trends/burgundy-western-boot.png", buyUrl: null };
+const retailTrend = { ...trend, buyUrl: "https://retailer.example/products/chunky-platform-loafer" };
 const profile = { email: "a@b.com", selfieUrl: "https://example.test/selfie.jpg", updatedAt: "2026-08-18T00:00:00.000Z" };
 
 function jsonResponse(body: unknown, ok = true) {
@@ -102,6 +103,73 @@ describe("VtoStylist", () => {
       ),
     );
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("shows the selected trend's Buy Now link only after a successful result", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValue(
+        jsonResponse({ data: { taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg" } }),
+      );
+
+    render(<VtoStylist initialTrend={retailTrend} initialGender="female" trends={[retailTrend]} initialProfile={profile} />);
+    expect(screen.queryByRole("link", { name: "Heel Yes — Buy Now →" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    const link = await screen.findByRole("link", { name: "Heel Yes — Buy Now →" });
+
+    expect(link).toHaveAttribute("href", retailTrend.buyUrl);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener");
+    expect(link).toHaveClass("min-h-11", "w-full", "bg-lime", "border-[3px]", "shadow-[5px_5px_0_var(--color-pink)]");
+  });
+
+  it("hides Buy Now after success when the selected trend has no retail URL", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValue(
+        jsonResponse({ data: { taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg" } }),
+      );
+
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("img", { name: /your ai try-on result/i });
+
+    expect(screen.queryByRole("link", { name: /buy now/i })).not.toBeInTheDocument();
+  });
+
+  it("uses the retail URL from a trend selected inside the Stylist surface", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValue(
+        jsonResponse({ data: { taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg" } }),
+      );
+
+    render(<VtoStylist initialTrend={undefined} initialGender="female" trends={[retailTrend, otherTrend]} initialProfile={profile} />);
+    fireEvent.click(screen.getByRole("button", { name: retailTrend.label }));
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+
+    expect(await screen.findByRole("link", { name: "Heel Yes — Buy Now →" })).toHaveAttribute(
+      "href",
+      retailTrend.buyUrl,
+    );
+  });
+
+  it("keeps Buy Now hidden throughout a photo error and inline re-upload", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValueOnce(
+        jsonResponse({ data: { status: "error", fault: "photo", message: "Choose another photo." } }),
+      );
+
+    render(<VtoStylist initialTrend={retailTrend} initialGender="female" trends={[retailTrend]} initialProfile={profile} />);
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("link", { name: /buy now/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try another photo" }));
+    expect(screen.getByLabelText("Add/change photo")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /buy now/i })).not.toBeInTheDocument();
   });
 
   it("falls back to the generic copy when the server sends an error with no resolved message", async () => {

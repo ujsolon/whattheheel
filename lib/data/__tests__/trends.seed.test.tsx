@@ -17,6 +17,10 @@ describe("curated trend seed", () => {
       expect(trend.label).toEqual(expect.any(String));
       expect(trend.shoeImageUrl).toEqual(expect.stringMatching(/^\/trends\//));
       expect(trend.buyUrl === null || typeof trend.buyUrl === "string").toBe(true);
+      if (trend.buyUrl !== null) {
+        expect(trend.buyUrl).toBe(trend.buyUrl.trim());
+        expect(new URL(trend.buyUrl).protocol).toBe("https:");
+      }
       expect(existsSync(path.join(publicDirectory, trend.shoeImageUrl.slice(1)))).toBe(true);
     }
   });

@@ -33,6 +33,53 @@ describe("getTrends", () => {
     expect(consoleError).not.toHaveBeenCalled();
   });
 
+  it("accepts a clean absolute HTTPS buy URL", () => {
+    mockedReadFileSync.mockReturnValue(
+      JSON.stringify([
+        {
+          id: "loafer",
+          label: "Loafer",
+          shoeImageUrl: "/trends/loafer.png",
+          buyUrl: "https://retailer.example/products/loafer",
+        },
+      ]),
+    );
+
+    expect(getTrends()).toHaveLength(1);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "javascript:alert(1)",
+    "data:text/html,unsafe",
+    "/products/loafer",
+    "//retailer.example/products/loafer",
+    " https://retailer.example/products/loafer",
+    "https://retailer.example/products/loafer ",
+    "not a url",
+    "",
+  ])("skips an unsafe buy URL: %s", (buyUrl) => {
+    mockedReadFileSync.mockReturnValue(
+      JSON.stringify([{ id: "unsafe", label: "Unsafe", shoeImageUrl: "/trends/unsafe.png", buyUrl }]),
+    );
+
+    expect(getTrends()).toEqual([]);
+    expect(consoleError).toHaveBeenCalledWith(
+      "Skipping trend entry at index 0: buyUrl must be null or a clean absolute HTTPS URL",
+    );
+  });
+
+  it("skips a non-string non-null buy URL", () => {
+    mockedReadFileSync.mockReturnValue(
+      JSON.stringify([{ id: "unsafe", label: "Unsafe", shoeImageUrl: "/trends/unsafe.png", buyUrl: 42 }]),
+    );
+
+    expect(getTrends()).toEqual([]);
+    expect(consoleError).toHaveBeenCalledWith(
+      "Skipping trend entry at index 0: buyUrl must be null or a clean absolute HTTPS URL",
+    );
+  });
+
   it("resolves a trusted trend by exact id and rejects malformed lookup ids", () => {
     mockedReadFileSync.mockReturnValue(
       JSON.stringify([

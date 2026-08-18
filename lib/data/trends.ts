@@ -14,6 +14,16 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isCleanAbsoluteHttpsUrl(value: unknown): value is string {
+  if (!isNonEmptyString(value) || value !== value.trim()) return false;
+
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function validateTrend(value: unknown): string | null {
   if (typeof value !== "object" || value === null) {
     return "entry must be an object";
@@ -33,8 +43,8 @@ function validateTrend(value: unknown): string | null {
   ) {
     return "shoeImageUrl must be a clean root-relative /trends/ path";
   }
-  if (candidate.buyUrl !== null && !isNonEmptyString(candidate.buyUrl)) {
-    return "buyUrl must be a non-empty string or null";
+  if (candidate.buyUrl !== null && !isCleanAbsoluteHttpsUrl(candidate.buyUrl)) {
+    return "buyUrl must be null or a clean absolute HTTPS URL";
   }
   return null;
 }
