@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 interface ProfileView { email: string; selfieUrl: string | null; updatedAt: string | null }
-interface SelfieUploadFormProps { initialProfile: ProfileView; onSaved?: () => void }
+interface SelfieUploadFormProps { initialProfile: ProfileView; onSaved?: (profile: ProfileView) => void }
 const guidance = "Use a clear, front-facing solo photo from the top of your head to your chest. JPG or PNG; at least 512 × 512px; under 10MB.";
 
 export function SelfieUploadForm({ initialProfile, onSaved }: SelfieUploadFormProps) {
@@ -23,8 +23,15 @@ export function SelfieUploadForm({ initialProfile, onSaved }: SelfieUploadFormPr
   async function submit(event: FormEvent) {
     event.preventDefault(); if (!file) { setError("Choose a selfie to upload."); return; }
     setPending(true); setError(null); setMessage(null);
-    try { const body = new FormData(); body.append("selfie", file); const response = await fetch("/api/upload", { method: "POST", body }); const result = await response.json(); if (!response.ok) { setError(result?.error?.message ?? "We couldn't save your selfie — please try again."); return; } setProfile(result.data.profile); setMessage("Selfie saved."); onSaved?.(); setFile(null); if (preview) URL.revokeObjectURL(preview); setPreview(null); if (inputRef.current) inputRef.current.value = ""; }
+    let saved: ProfileView | null = null;
+    const notify = onSaved;
+    try { const body = new FormData(); body.append("selfie", file); const response = await fetch("/api/upload", { method: "POST", body }); const result = await response.json(); if (!response.ok) { setError(result?.error?.message ?? "We couldn't save your selfie — please try again."); return; } saved = result.data.profile as ProfileView; setProfile(saved); setMessage("Selfie saved."); setFile(null); if (preview) URL.revokeObjectURL(preview); setPreview(null); if (inputRef.current) inputRef.current.value = ""; }
     catch { setError("We couldn't save your selfie — please try again."); } finally { setPending(false); }
+    // Invoked after cleanup and outside the submit try/catch: a throwing parent
+    // handler must not turn a successful save into a failure message or leak the
+    // preview blob. Its own failure is logged rather than swallowed or surfaced
+    // to the user, since the save itself did succeed.
+    if (saved && notify) { try { notify(saved); } catch (cause) { console.error("selfie_saved_callback_failed", { errorClass: cause instanceof Error ? cause.name : "UnknownError" }); } }
   }
   return <form onSubmit={submit} className="flex flex-col gap-4">
     <p>{guidance}</p>

@@ -46,4 +46,10 @@
 
 ## Deferred from: code review of 2-7-vto-history-full-image-viewer (2026-08-18)
 
-- **Uncommitted `OverlayCanvas.tsx` copy change outside both stories' File Lists** (`app/components/OverlayCanvas.tsx`) — a working-tree edit ("Love the direction?" → "Want a better way to try these on?") that appears in neither reviewed story. Belongs to concurrent Story 2.4 work; attribute it there or revert before either story is marked done.
+- ~~**Uncommitted `OverlayCanvas.tsx` copy change outside both stories' File Lists**~~ — **RESOLVED 2026-08-18** by the Story 2.4 code review: the edit landed in commit `2a46abc` ("Initial build US2.4 vto failure handling") and has been attributed to Story 2.4's File List. No longer outstanding.
+
+## Deferred from: code review of 2-4-vto-failure-handling (2026-08-18)
+
+- **A persistently failing `updateTaskStatus` loops YouCam calls and duplicate logs** (`lib/services/vtoTask.ts:181-186`) — when the write fails for a reason other than a lost race (rejected write, doc still `pending`), `reconcileAfterLostRace` re-reads a still-`pending` document and returns `{ status: "pending" }`, so the client keeps polling every 2s; each tick re-enters `getTaskStatus`, re-hits the YouCam API, and re-emits `console.error("vto_invalid_parameter", …)` with a fresh correlationId — up to ~45 duplicate logs and extra provider calls before the 90s ceiling stops it. Nothing distinguishes "another poll won the race" from "the write didn't take". Fixing properly needs `updateTaskStatus` to return a tri-state (written / lost-race / failed) rather than a boolean. Bounded by the client ceiling and requires a non-race write failure, so accepted for now.
+
+- **"Selfie saved." confirmation never paints in the reupload flow** (`app/components/SelfieUploadForm.tsx:26`) — `setMessage("Selfie saved.")` and `onSaved?.()` run in the same auto-batched continuation, and `onSaved` sets `phase("idle")` in the parent, unmounting the form before its `role="status"` node ever renders. Deferred rather than patched: the uploader disappearing and the "Try It On" trigger returning is itself clear implicit feedback, and surfacing an explicit confirmation means lifting new state into `VtoStylist` for marginal gain. Revisit if user testing shows the transition reads as ambiguous.

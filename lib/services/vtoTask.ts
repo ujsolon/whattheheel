@@ -30,13 +30,45 @@ const RESULT_URL_LIFETIME_SECONDS = 1800;
 
 const RESULT_COPY_FAILED_CODE = "vto_result_copy_failed";
 
-const ERROR_COPY: Record<string, string> = {
-  error_no_face: "We couldn't detect a face — try a front-facing selfie with good lighting.",
-  error_download_image: "We couldn't load one of the images — please try uploading again.",
-  error_inference: "Something went wrong generating your preview — please try again.",
-  error_nsfw_content_detected: "This image can't be used — please choose a different photo.",
-  exceed_max_filesize: "That image is too large (max 10MB) — please choose a smaller file.",
+// AD-6: the single place every YouCam error code maps to fixed handling.
+// `fault` decides which recovery the UI offers — "photo" errors are the user's
+// image's fault and warrant re-uploading; "system" errors are ours and must not
+// demand a new file (or a second billable task) to recover from.
+export type VtoErrorFault = "photo" | "system";
+
+interface VtoErrorSpec {
+  message: string;
+  fault: VtoErrorFault;
+}
+
+const ERROR_COPY: Record<string, VtoErrorSpec> = {
+  error_no_face: {
+    message: "We couldn't detect a face — try a front-facing selfie with good lighting.",
+    fault: "photo",
+  },
+  error_download_image: {
+    message: "We couldn't load one of the images — please try uploading again.",
+    fault: "photo",
+  },
+  error_inference: {
+    message: "Something went wrong generating your preview — please try again.",
+    fault: "system",
+  },
+  error_nsfw_content_detected: {
+    message: "This image can't be used — please choose a different photo.",
+    fault: "photo",
+  },
+  exceed_max_filesize: {
+    message: "That image is too large (max 10MB) — please choose a smaller file.",
+    fault: "photo",
+  },
 };
+
+// Unmapped codes fall back to `error_inference` — which is deliberately a
+// "system" fault, so `invalid_parameter` (an app bug) and
+// RESULT_COPY_FAILED_CODE (YouCam already generated and billed the result;
+// only our durable copy failed) both recover without demanding a new photo.
+const FALLBACK_ERROR_CODE = "error_inference";
 
 export class NoSelfieError extends Error {
   constructor() {
@@ -66,12 +98,12 @@ export class TaskNotFoundError extends Error {
   }
 }
 
-export interface VtoTaskView {
-  taskId: string;
-  status: "pending" | "success" | "error";
-  resultUrl?: string;
-  message?: string;
-}
+// Discriminated union so an error view cannot be constructed without its
+// resolved copy, and a success view cannot carry one.
+export type VtoTaskView =
+  | { taskId: string; status: "pending" }
+  | { taskId: string; status: "success"; resultUrl?: string }
+  | { taskId: string; status: "error"; message: string; fault: VtoErrorFault };
 
 export async function createVtoTask(
   trendId: string,
@@ -146,8 +178,10 @@ export async function getVtoTaskStatus(taskId: string): Promise<VtoTaskView> {
     // A download/upload failure here must not strand the task at `pending`
     // forever (Review Finding, Story 2.6): fall through to the same
     // error-terminal path as a real YouCam error, using an app-internal code
-    // that isn't in ERROR_COPY, so it resolves to the generic fallback copy
-    // and the user gets the existing "try another photo" retry.
+    // that isn't in ERROR_COPY. It therefore resolves to the generic
+    // `error_inference` copy AND its "system" fault, so the user is offered a
+    // plain retry rather than being told to replace a selfie that was never
+    // the problem (Review Finding, Story 2.4).
     let uploaded: { publicId: string; format: string } | undefined;
     try {
       const buffer = await downloadResultImage(result.resultUrl);
@@ -159,7 +193,7 @@ export async function getVtoTaskStatus(taskId: string): Promise<VtoTaskView> {
 
     if (!uploaded) {
       const updated = await updateTaskStatus(taskId, { status: "error", errorCode: RESULT_COPY_FAILED_CODE });
-      if (updated) return { taskId, status: "error", message: resolveErrorMessage(RESULT_COPY_FAILED_CODE) };
+      if (updated) return toErrorView(taskId, RESULT_COPY_FAILED_CODE);
       return reconcileAfterLostRace(taskId, user.id);
     }
 
@@ -179,10 +213,18 @@ export async function getVtoTaskStatus(taskId: string): Promise<VtoTaskView> {
   }
 
   const updated = await updateTaskStatus(taskId, { status: "error", errorCode: result.errorCode });
-  if (result.errorCode === "invalid_parameter") {
-    console.error("vto_invalid_parameter", { correlationId: randomUUID(), taskId });
+  if (updated) {
+    // Logged only by the poll that actually wrote the transition, so a task
+    // produces one line rather than one per racing poller.
+    if (result.errorCode === "invalid_parameter") {
+      console.error("vto_invalid_parameter", {
+        correlationId: randomUUID(),
+        taskId,
+        errorCode: result.errorCode,
+      });
+    }
+    return toErrorView(taskId, result.errorCode);
   }
-  if (updated) return { taskId, status: "error", message: resolveErrorMessage(result.errorCode) };
   return reconcileAfterLostRace(taskId, user.id);
 }
 
@@ -194,17 +236,30 @@ async function reconcileAfterLostRace(taskId: string, userId: string): Promise<V
 
 function toView(task: VtoTaskDocument): VtoTaskView {
   if (task.status === "error") {
-    return { taskId: task.taskId, status: "error", message: resolveErrorMessage(task.errorCode) };
+    return toErrorView(task.taskId, task.errorCode);
   }
-  const resultUrl =
-    task.status === "success" && task.resultPublicId && task.resultFormat
-      ? getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now(), RESULT_URL_LIFETIME_SECONDS)
-      : undefined;
-  return { taskId: task.taskId, status: task.status, resultUrl };
+  if (task.status === "success") {
+    const resultUrl =
+      task.resultPublicId && task.resultFormat
+        ? getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now(), RESULT_URL_LIFETIME_SECONDS)
+        : undefined;
+    return { taskId: task.taskId, status: "success", resultUrl };
+  }
+  return { taskId: task.taskId, status: "pending" };
 }
 
-function resolveErrorMessage(errorCode?: string): string {
-  return (errorCode && ERROR_COPY[errorCode]) ?? ERROR_COPY.error_inference;
+function toErrorView(taskId: string, errorCode?: string): VtoTaskView {
+  const spec = resolveErrorSpec(errorCode);
+  return { taskId, status: "error", message: spec.message, fault: spec.fault };
+}
+
+// `Object.hasOwn` (not a bare index) so an upstream code like "__proto__" or
+// "toString" cannot resolve to an inherited Object.prototype member, and an
+// explicit empty-string guard so a blank code falls back rather than
+// resolving to "" — both would otherwise reach the UI (Review Findings).
+function resolveErrorSpec(errorCode?: string): VtoErrorSpec {
+  if (errorCode && Object.hasOwn(ERROR_COPY, errorCode)) return ERROR_COPY[errorCode];
+  return ERROR_COPY[FALLBACK_ERROR_CODE];
 }
 
 export interface VtoHistoryItem {

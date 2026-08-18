@@ -17,8 +17,15 @@ async function retryDelete(publicId: string): Promise<boolean> {
 async function cleanupPending(profile: UserProfileDocument) {
   for (const publicId of profile.pendingCleanupPublicIds) if (await retryDelete(publicId)) await removePendingCleanup(profile.userId, publicId);
 }
+// The 300s default is tuned for an image that renders immediately. This URL is
+// server-rendered into props that can surface much later — notably the selfie
+// re-upload form opened from a VTO failure, which is reachable after a 90s poll
+// plus however long the user spends reading the error. 30 minutes matches the
+// headroom the VTO paths already use for the same reason.
+const SELFIE_URL_LIFETIME_SECONDS = 1800;
+
 function view(email: string, profile: UserProfileDocument | null): ProfileView {
-  return { email, selfieUrl: profile ? getPrivateSelfieUrl(profile.selfiePublicId, profile.format) : null, updatedAt: profile?.updatedAt.toISOString() ?? null, gender: profile?.gender ?? null };
+  return { email, selfieUrl: profile ? getPrivateSelfieUrl(profile.selfiePublicId, profile.format, Date.now(), SELFIE_URL_LIFETIME_SECONDS) : null, updatedAt: profile?.updatedAt.toISOString() ?? null, gender: profile?.gender ?? null };
 }
 export async function getMyProfile(): Promise<ProfileView> {
   const user = await requireAuthenticatedUser(); const profile = await findProfile(user.id);

@@ -1,4 +1,6 @@
 /** @jest-environment node */
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { getTrendById } from "@/lib/data/trends";
 import { findProfile, setGenderPreference } from "@/lib/data/userProfiles";
 import { createTask, findSuccessfulTasksByUser, findTaskById, updateTaskStatus } from "@/lib/data/vtoTasks";
@@ -186,7 +188,7 @@ describe("getVtoTaskStatus", () => {
     jest.mocked(getTaskStatus).mockResolvedValue({ status: "pending" });
     const result = await getVtoTaskStatus("task-1");
     expect(getTaskStatus).toHaveBeenCalledWith("task-1");
-    expect(result).toEqual({ taskId: "task-1", status: "pending", resultUrl: undefined, errorCode: undefined });
+    expect(result).toEqual({ taskId: "task-1", status: "pending" });
   });
 
   it("persists and returns a success transition, copying the result image to durable storage first", async () => {
@@ -215,7 +217,7 @@ describe("getVtoTaskStatus", () => {
     expect(getPrivateSelfieUrl).toHaveBeenCalledWith("folder/result-id", "jpg", expect.any(Number), 1800);
   });
 
-  it("marks the task error (not stuck pending) when the download step fails, using an app-internal code that resolves to the generic fallback copy", async () => {
+  it("marks the task error (not stuck pending) when the download step fails, as a SYSTEM fault so the user is never told to replace an innocent selfie", async () => {
     jest.mocked(findTaskById).mockResolvedValue(storedTask);
     jest.mocked(getTaskStatus).mockResolvedValue({ status: "success", resultUrl: "https://cdn.test/result.jpg" });
     jest.mocked(downloadResultImage).mockRejectedValue(new Error("network blip"));
@@ -228,6 +230,9 @@ describe("getVtoTaskStatus", () => {
       taskId: "task-1",
       status: "error",
       message: "Something went wrong generating your preview — please try again.",
+      // YouCam already generated and billed this result; only our durable copy
+      // failed, so demanding a new photo (and a second unit) would be wrong.
+      fault: "system",
     });
   });
 
@@ -277,28 +282,35 @@ describe("getVtoTaskStatus", () => {
       taskId: "task-1",
       status: "error",
       message: "We couldn't detect a face — try a front-facing selfie with good lighting.",
+      fault: "photo",
     });
     expect(result).not.toHaveProperty("errorCode");
   });
 
+  // The `fault` column is what decides the UI's recovery affordance: "photo"
+  // offers re-upload, "system" must offer a plain retry that neither demands a
+  // new file nor spends another billable YouCam task.
   it.each([
-    ["error_no_face", "We couldn't detect a face — try a front-facing selfie with good lighting."],
-    ["error_download_image", "We couldn't load one of the images — please try uploading again."],
-    ["error_inference", "Something went wrong generating your preview — please try again."],
-    ["error_nsfw_content_detected", "This image can't be used — please choose a different photo."],
-    ["exceed_max_filesize", "That image is too large (max 10MB) — please choose a smaller file."],
-  ])("maps stored YouCam error %s to locked copy without exposing the code", async (errorCode, message) => {
+    ["error_no_face", "We couldn't detect a face — try a front-facing selfie with good lighting.", "photo"],
+    ["error_download_image", "We couldn't load one of the images — please try uploading again.", "photo"],
+    ["error_inference", "Something went wrong generating your preview — please try again.", "system"],
+    ["error_nsfw_content_detected", "This image can't be used — please choose a different photo.", "photo"],
+    ["exceed_max_filesize", "That image is too large (max 10MB) — please choose a smaller file.", "photo"],
+  ])("maps stored YouCam error %s to locked copy and fault without exposing the code", async (errorCode, message, fault) => {
     jest.mocked(findTaskById).mockResolvedValue(storedTask);
     jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode });
 
     const result = await getVtoTaskStatus("task-1");
 
-    expect(result).toEqual({ taskId: "task-1", status: "error", message });
+    expect(result).toEqual({ taskId: "task-1", status: "error", message, fault });
     expect(result).not.toHaveProperty("errorCode");
   });
 
-  it.each(["something_new"])(
-    "uses generic inference copy for unmapped code %s without exposing it",
+  // Unmapped, empty, and prototype-member codes must all land on the generic
+  // system-fault copy — never a blank string, never an inherited Object member
+  // (which would serialize as `{}` and throw when React renders it).
+  it.each(["something_new", "", "__proto__", "toString", "constructor", "valueOf", "hasOwnProperty"])(
+    "falls back to generic system-fault copy for code %p without exposing it",
     async (errorCode) => {
       jest.mocked(findTaskById).mockResolvedValue(storedTask);
       jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode });
@@ -309,12 +321,14 @@ describe("getVtoTaskStatus", () => {
         taskId: "task-1",
         status: "error",
         message: "Something went wrong generating your preview — please try again.",
+        fault: "system",
       });
+      expect(typeof (result as { message: string }).message).toBe("string");
       expect(result).not.toHaveProperty("errorCode");
     },
   );
 
-  it("logs invalid_parameter server-side with operational context only", async () => {
+  it("logs invalid_parameter server-side with a code-bearing payload, only on the winning write", async () => {
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     jest.mocked(findTaskById).mockResolvedValue(storedTask);
     jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode: "invalid_parameter" });
@@ -323,12 +337,28 @@ describe("getVtoTaskStatus", () => {
       taskId: "task-1",
       status: "error",
       message: "Something went wrong generating your preview — please try again.",
+      fault: "system",
     });
 
     expect(consoleSpy).toHaveBeenCalledWith("vto_invalid_parameter", {
       correlationId: expect.any(String),
       taskId: "task-1",
+      errorCode: "invalid_parameter",
     });
+    consoleSpy.mockRestore();
+  });
+
+  it("does not log invalid_parameter when this poll lost the write race", async () => {
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    jest.mocked(findTaskById)
+      .mockResolvedValueOnce(storedTask)
+      .mockResolvedValueOnce({ ...storedTask, status: "error", errorCode: "invalid_parameter" });
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode: "invalid_parameter" });
+    jest.mocked(updateTaskStatus).mockResolvedValue(false);
+
+    await getVtoTaskStatus("task-1");
+
+    expect(consoleSpy).not.toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
 
@@ -339,6 +369,7 @@ describe("getVtoTaskStatus", () => {
       taskId: "task-1",
       status: "error",
       message: "We couldn't load one of the images — please try uploading again.",
+      fault: "photo",
     });
     expect(getTaskStatus).not.toHaveBeenCalled();
   });
@@ -354,7 +385,6 @@ describe("getVtoTaskStatus", () => {
       taskId: "task-1",
       status: "success",
       resultUrl: "https://signed.test/folder/winner-id",
-      errorCode: undefined,
     });
   });
 
@@ -362,7 +392,7 @@ describe("getVtoTaskStatus", () => {
     jest.mocked(findTaskById).mockResolvedValue({ ...storedTask, status: "success", resultPublicId: "folder/result-id", resultFormat: "jpg" });
     const result = await getVtoTaskStatus("task-1");
     expect(getTaskStatus).not.toHaveBeenCalled();
-    expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: "https://signed.test/folder/result-id", errorCode: undefined });
+    expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: "https://signed.test/folder/result-id" });
   });
 
   it("never re-exposes srcUrl/refUrl to the caller", async () => {
@@ -375,7 +405,26 @@ describe("getVtoTaskStatus", () => {
   it("resolves an already-terminal success task with no stored result reference to an undefined resultUrl, without throwing (AC5, pre-story tasks)", async () => {
     jest.mocked(findTaskById).mockResolvedValue({ ...storedTask, status: "success" });
     const result = await getVtoTaskStatus("task-1");
-    expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: undefined, errorCode: undefined });
+    expect(result).toEqual({ taskId: "task-1", status: "success", resultUrl: undefined });
+  });
+
+  // AD-6 keeps the locked copy in exactly one place, but VtoStylist.tsx must
+  // carry a byte-identical client-side fallback for failures that never reach
+  // the server (a failed POST, a missing taskId) and so have no resolved
+  // message. A Client Component cannot import from this server-only module, so
+  // this test is what stops the two copies from drifting apart.
+  it("pins the client-side GENERIC_ERROR_COPY fallback to the server's locked error_inference string", async () => {
+    const clientSource = await readFile(
+      resolve(process.cwd(), "app/components/VtoStylist.tsx"),
+      "utf8",
+    );
+    const declared = /const GENERIC_ERROR_COPY = "([^"]+)";/.exec(clientSource)?.[1];
+
+    jest.mocked(findTaskById).mockResolvedValue(storedTask);
+    jest.mocked(getTaskStatus).mockResolvedValue({ status: "error", errorCode: "error_inference" });
+    const result = (await getVtoTaskStatus("task-1")) as { message: string };
+
+    expect(declared).toBe(result.message);
   });
 });
 

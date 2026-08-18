@@ -24,7 +24,7 @@ describe("VtoStylist", () => {
   });
 
   it("renders a compact in-surface trend picker and applies selection without navigation", () => {
-    render(<VtoStylist initialTrend={undefined} initialGender="female" trends={[trend, otherTrend]} />);
+    render(<VtoStylist initialTrend={undefined} initialGender="female" trends={[trend, otherTrend]} initialProfile={profile} />);
 
     const choice = screen.getByRole("button", { name: "Chunky Platform Loafer" });
     expect(choice).toHaveAttribute("aria-pressed", "false");
@@ -37,26 +37,26 @@ describe("VtoStylist", () => {
   });
 
   it("shows the pre-selected trend and a trigger button when a trend is carried over", () => {
-    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
 
     expect(screen.getByText("Chunky Platform Loafer")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try it on/i })).toBeInTheDocument();
   });
 
   it("shows a one-time gender selector when no gender is set yet, and omits it otherwise", () => {
-    const { unmount } = render(<VtoStylist initialTrend={trend} initialGender={null} trends={[trend]} />);
+    const { unmount } = render(<VtoStylist initialTrend={trend} initialGender={null} trends={[trend]} initialProfile={profile} />);
     expect(screen.getByRole("radio", { name: /feminine/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /masculine/i })).toBeInTheDocument();
     unmount();
 
     // A different initialGender only ever occurs via a fresh mount (a full
     // page load) in real usage, never a prop change on a live instance.
-    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
     expect(screen.queryByRole("radio", { name: /feminine/i })).not.toBeInTheDocument();
   });
 
   it("disables the trigger until a gender is chosen when none is set on the profile", () => {
-    render(<VtoStylist initialTrend={trend} initialGender={null} trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender={null} trends={[trend]} initialProfile={profile} />);
     expect(screen.getByRole("button", { name: /try it on/i })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("radio", { name: /feminine/i }));
@@ -67,7 +67,7 @@ describe("VtoStylist", () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
     (global.fetch as jest.Mock).mockResolvedValue(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
 
-    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
@@ -89,7 +89,7 @@ describe("VtoStylist", () => {
       jsonResponse({ data: { taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg" } }),
     );
 
-    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
 
@@ -104,44 +104,113 @@ describe("VtoStylist", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
-  it("transitions to the generic error message on an error status", async () => {
+  it("falls back to the generic copy when the server sends an error with no resolved message", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
     (global.fetch as jest.Mock).mockResolvedValue(
-      jsonResponse({ data: { taskId: "task-1", status: "error", errorCode: "error_no_face" } }),
+      jsonResponse({ data: { taskId: "task-1", status: "error" } }),
     );
 
-    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
 
     await act(async () => jest.advanceTimersByTimeAsync(2000));
 
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /try another photo|retry/i })).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Something went wrong generating your preview — please try again.",
+    );
   });
 
-  it("renders the exact server-resolved copy for a terminal YouCam error", async () => {
+  it.each([
+    ["an empty-string message", ""],
+    ["a non-string message", { nested: "object" }],
+  ])("ignores %s and renders the generic copy rather than a blank or broken alert", async (_label, message) => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "error", message } }));
+
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Something went wrong generating your preview — please try again.",
+    );
+  });
+
+  it("renders the exact server-resolved copy for a photo-fault error and offers re-upload as the primary action", async () => {
     const lockedCopy = "We couldn't detect a face — try a front-facing selfie with good lighting.";
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
-      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "error", message: lockedCopy } }));
+      .mockResolvedValueOnce(
+        jsonResponse({ data: { taskId: "task-1", status: "error", message: lockedCopy, fault: "photo" } }),
+      );
 
     render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(lockedCopy);
     expect(screen.getByRole("button", { name: "Try another photo" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  });
+
+  // The core of the fault split: a system-fault failure must never make
+  // replacing the selfie the only way forward, since the photo wasn't at fault
+  // and a fresh task costs another billable YouCam unit.
+  it("offers a plain retry (not a forced re-upload) for a system-fault error, returning straight to the trigger", async () => {
+    const genericCopy = "Something went wrong generating your preview — please try again.";
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValueOnce(
+        jsonResponse({ data: { taskId: "task-1", status: "error", message: genericCopy, fault: "system" } }),
+      );
+
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("alert");
+
+    const primary = screen.getByRole("button", { name: "Try again" });
+    // Re-upload stays available as a secondary choice, just not the only one.
+    expect(screen.getByRole("button", { name: "Try another photo" })).toBeInTheDocument();
+
+    fireEvent.click(primary);
+
+    expect(screen.getByRole("button", { name: /try it on/i })).toBeEnabled();
+    expect(screen.queryByLabelText("Add/change photo")).not.toBeInTheDocument();
+  });
+
+  it("lets the user leave the re-upload phase without saving, so a failing upload is not a dead end", async () => {
+    const lockedCopy = "We couldn't detect a face — try a front-facing selfie with good lighting.";
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValueOnce(
+        jsonResponse({ data: { taskId: "task-1", status: "error", message: lockedCopy, fault: "photo" } }),
+      );
+
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Try another photo" }));
+    expect(screen.getByLabelText("Add/change photo")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Keep my current photo" }));
+
+    expect(screen.getByRole("button", { name: /try it on/i })).toBeEnabled();
+    expect(screen.queryByLabelText("Add/change photo")).not.toBeInTheDocument();
   });
 
   it("reopens the selfie uploader inline and preserves trend and gender after a successful save", async () => {
     const lockedCopy = "We couldn't detect a face — try a front-facing selfie with good lighting.";
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
-      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "error", message: lockedCopy } }))
+      .mockResolvedValueOnce(
+        jsonResponse({ data: { taskId: "task-1", status: "error", message: lockedCopy, fault: "photo" } }),
+      )
       .mockResolvedValueOnce(
         jsonResponse({ data: { profile: { ...profile, selfieUrl: "https://example.test/replacement.jpg" } } }),
-      );
+      )
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-2", status: "pending" } }))
+      .mockResolvedValue(jsonResponse({ data: { taskId: "task-2", status: "pending" } }));
 
     render(<VtoStylist initialTrend={trend} initialGender={null} trends={[trend]} initialProfile={profile} />);
     fireEvent.click(screen.getByRole("radio", { name: "Feminine" }));
@@ -157,12 +226,56 @@ describe("VtoStylist", () => {
     expect(await screen.findByRole("button", { name: /try it on/i })).toBeEnabled();
     expect(screen.getByText("Chunky Platform Loafer")).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "Feminine" })).not.toBeInTheDocument();
+
+    // AC5 proven by what actually goes on the wire, not by proxy: re-trigger
+    // and assert the preserved gender is still what gets sent.
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/vto-tasks",
+        expect.objectContaining({ body: JSON.stringify({ trendId: trend.id, gender: "female" }) }),
+      ),
+    );
+  });
+
+  it("seeds a second re-upload with the replacement selfie, not the one already superseded", async () => {
+    const lockedCopy = "We couldn't detect a face — try a front-facing selfie with good lighting.";
+    const errorBody = jsonResponse({
+      data: { taskId: "task-1", status: "error", message: lockedCopy, fault: "photo" },
+    });
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValueOnce(errorBody)
+      .mockResolvedValueOnce(
+        jsonResponse({ data: { profile: { ...profile, selfieUrl: "https://example.test/replacement.jpg" } } }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-2", status: "pending" } }))
+      .mockResolvedValue(errorBody);
+
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Try another photo" }));
+    fireEvent.change(screen.getByLabelText("Add/change photo"), {
+      target: { files: [new File(["photo"], "replacement.jpg", { type: "image/jpeg" })] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save selfie" }));
+    await screen.findByRole("button", { name: /try it on/i });
+
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Try another photo" }));
+
+    expect(screen.getByAltText("Your saved selfie")).toHaveAttribute(
+      "src",
+      "https://example.test/replacement.jpg",
+    );
   });
 
   it("shows long-wait feedback at 30s and the lost-connection treatment at the 90s ceiling", async () => {
     (global.fetch as jest.Mock).mockResolvedValue(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
 
-    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
 
@@ -173,23 +286,34 @@ describe("VtoStylist", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("We lost the connection — tap to retry.");
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    // A timeout is not the photo's fault: it re-polls the same task rather than
+    // demanding a new upload (and a new billable task). AC4 was amended to match.
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try another photo" })).not.toBeInTheDocument();
   });
 
-  it("a terminal generation error opens the inline selfie uploader", async () => {
+  it("a photo-fault error opens the inline selfie uploader", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
     (global.fetch as jest.Mock).mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }));
     (global.fetch as jest.Mock).mockResolvedValue(
-      jsonResponse({ data: { taskId: "task-1", status: "error", errorCode: "error_no_face" } }),
+      jsonResponse({
+        data: {
+          taskId: "task-1",
+          status: "error",
+          message: "We couldn't detect a face — try a front-facing selfie with good lighting.",
+          fault: "photo",
+        },
+      }),
     );
 
-    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
 
     await act(async () => jest.advanceTimersByTimeAsync(2000));
     await screen.findByRole("alert");
 
-    fireEvent.click(screen.getByRole("button", { name: /try another photo|retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Try another photo" }));
 
     expect(screen.getByLabelText("Add/change photo")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -200,7 +324,7 @@ describe("VtoStylist", () => {
       .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
       .mockResolvedValue(jsonResponse({}, false));
 
-    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
     await act(async () => jest.advanceTimersByTimeAsync(6000));
@@ -224,7 +348,7 @@ describe("VtoStylist", () => {
       .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
       .mockReturnValueOnce(pendingPoll);
 
-    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} />);
+    render(<VtoStylist initialTrend={trend} initialGender="female" trends={[trend]} initialProfile={profile} />);
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
     await screen.findByRole("progressbar");
     await act(async () => jest.advanceTimersByTimeAsync(10_000));

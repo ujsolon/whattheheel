@@ -20,19 +20,32 @@ const STATUS_COPY = [
   "Polishing the pixels…",
 ];
 
+// Byte-identical to ERROR_COPY.error_inference in lib/services/vtoTask.ts by
+// design (AD-6 locks the string; this is the client-side fallback for failures
+// that never reached the server and so carry no resolved message). Pinned
+// against drift by a test in lib/services/__tests__/vtoTask.test.tsx.
 const GENERIC_ERROR_COPY = "Something went wrong generating your preview — please try again.";
 const CONNECTION_ERROR_COPY = "We lost the connection — tap to retry.";
-const EMPTY_PROFILE = { email: "", selfieUrl: null, updatedAt: null };
+
+interface ProfileSummary {
+  email: string;
+  selfieUrl: string | null;
+  updatedAt: string | null;
+}
 
 interface VtoStylistProps {
   initialTrend: Trend | undefined;
   initialGender: "female" | "male" | null;
   trends: Trend[];
-  initialProfile?: { email: string; selfieUrl: string | null; updatedAt: string | null };
+  initialProfile: ProfileSummary;
 }
 
 type Phase = "idle" | "pending" | "success" | "error" | "reupload";
-type ErrorKind = "generation" | "connection";
+// "photo" — the user's image is the problem, so re-uploading is the fix.
+// "system" — our side failed; a plain retry must not demand a new file or a
+// second billable task. "connection" — the poll itself failed; re-poll the
+// same task rather than creating a new one.
+type ErrorKind = "photo" | "system" | "connection";
 
 function subscribeToReducedMotion(callback: () => void) {
   const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -52,11 +65,12 @@ function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribeToReducedMotion, getReducedMotionSnapshot, getReducedMotionServerSnapshot);
 }
 
-export function VtoStylist({ initialTrend, initialGender, trends, initialProfile = EMPTY_PROFILE }: VtoStylistProps) {
+export function VtoStylist({ initialTrend, initialGender, trends, initialProfile }: VtoStylistProps) {
   const [selectedTrend, setSelectedTrend] = useState<Trend | undefined>(initialTrend);
   const [gender, setGender] = useState<"female" | "male" | null>(initialGender);
+  const [profile, setProfile] = useState<ProfileSummary>(initialProfile);
   const [phase, setPhase] = useState<Phase>("idle");
-  const [errorKind, setErrorKind] = useState<ErrorKind>("generation");
+  const [errorKind, setErrorKind] = useState<ErrorKind>("system");
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [resultUrl, setResultUrl] = useState<string | undefined>(undefined);
   const [statusIndex, setStatusIndex] = useState(0);
@@ -70,6 +84,7 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
   const activeTaskIdRef = useRef<string | undefined>(undefined);
   const consecutiveFailuresRef = useRef(0);
   const pollSessionRef = useRef(0);
+  const reuploadHeadingRef = useRef<HTMLDivElement | null>(null);
 
   function clearTimers() {
     clearTimeout(pollTimerRef.current);
@@ -116,14 +131,21 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
         handlePollFailure(taskId, session);
         return;
       }
-      const body: { data?: { status?: string; resultUrl?: string; message?: string } } = await response.json();
+      const body: { data?: { status?: string; resultUrl?: string; message?: string; fault?: string } } =
+        await response.json();
+      // Re-check after the await: the ceiling timer (or a give-up) can fire
+      // while the body is in flight, and a stale poll must not resurrect a
+      // dead session or reschedule against a newer one.
+      if (session !== pollSessionRef.current) return;
       const status = body.data?.status;
 
       if (reducedMotion) setStatusIndex((current) => (current + 1) % STATUS_COPY.length);
 
       if (status === "success") {
         if (!body.data?.resultUrl) {
-          setErrorKind("generation");
+          // Generation succeeded upstream but no image came back — ours, not
+          // the photo's, so offer a plain retry.
+          setErrorKind("system");
           setErrorMessage(undefined);
           clearTimers();
           setPhase("error");
@@ -134,8 +156,11 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
         setPhase("success");
       } else if (status === "error") {
         clearTimers();
-        setErrorKind("generation");
-        setErrorMessage(body.data?.message);
+        setErrorKind(body.data?.fault === "photo" ? "photo" : "system");
+        // Untrusted JSON: the annotation above is compile-time only, so narrow
+        // to a non-empty string before it can reach JSX.
+        const message = body.data?.message;
+        setErrorMessage(typeof message === "string" && message.length > 0 ? message : undefined);
         setPhase("error");
       } else if (status === "pending") {
         consecutiveFailuresRef.current = 0;
@@ -182,7 +207,7 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
         body: JSON.stringify({ trendId: selectedTrend.id, gender }),
       });
       if (!response.ok) {
-        setErrorKind("generation");
+        setErrorKind("system");
         setErrorMessage(undefined);
         setPhase("error");
         return;
@@ -190,7 +215,7 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
       const body: { data?: { taskId?: string } } = await response.json();
       const taskId = body.data?.taskId;
       if (!taskId) {
-        setErrorKind("generation");
+        setErrorKind("system");
         setErrorMessage(undefined);
         setPhase("error");
         return;
@@ -198,7 +223,7 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
 
       startPolling(taskId);
     } catch {
-      setErrorKind("generation");
+      setErrorKind("system");
       setErrorMessage(undefined);
       setPhase("error");
     }
@@ -224,6 +249,9 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
     setResultUrl(undefined);
     setErrorMessage(undefined);
     setPhase("reupload");
+    // Move focus into the newly mounted section so the transition is announced
+    // rather than silently swapping the alert out from under the user.
+    queueMicrotask(() => reuploadHeadingRef.current?.focus());
   }
 
   return (
@@ -318,22 +346,55 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
           </p>
           <button
             type="button"
-            onClick={errorKind === "connection" ? retry : reupload}
+            onClick={errorKind === "photo" ? reupload : retry}
             className="min-h-11 bg-lime px-4 py-2 font-black uppercase text-ink focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
           >
-            {errorKind === "connection" ? "Retry" : "Try another photo"}
+            {errorKind === "photo" ? "Try another photo" : errorKind === "connection" ? "Retry" : "Try again"}
           </button>
+          {/* A system-fault error is not the photo's fault, but replacing the
+              selfie is still a legitimate thing to want — offered as a
+              secondary action rather than the only way forward. */}
+          {errorKind === "system" && (
+            <button
+              type="button"
+              onClick={reupload}
+              className="min-h-11 border-[3px] border-lime px-4 py-2 font-black uppercase text-lime focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
+            >
+              Try another photo
+            </button>
+          )}
         </div>
       )}
 
       {phase === "reupload" && (
-        <SelfieUploadForm
-          initialProfile={initialProfile}
-          onSaved={() => {
-            setErrorMessage(undefined);
-            setPhase("idle");
-          }}
-        />
+        // Activating "Try another photo" unmounts the role="alert" and mounts a
+        // form whose file input is visually hidden behind a label, so without
+        // this a screen-reader user gets silence and no landing point.
+        <div ref={reuploadHeadingRef} tabIndex={-1} className="flex flex-col gap-2">
+          <h2 className="text-sm font-black uppercase text-white">Replace your selfie</h2>
+          <SelfieUploadForm
+            initialProfile={profile}
+            onSaved={(saved) => {
+              // Lift the replacement up so a second reupload in the same
+              // session seeds the form with the new photo, not the stale one.
+              setProfile(saved);
+              setErrorMessage(undefined);
+              setPhase("idle");
+            }}
+          />
+          {/* Without this the reupload phase is a one-way door: the trigger is
+              gated on `idle` and a failing upload would strand the user. */}
+          <button
+            type="button"
+            onClick={() => {
+              setErrorMessage(undefined);
+              setPhase("idle");
+            }}
+            className="min-h-11 border-[3px] border-lime px-4 py-2 font-black uppercase text-lime focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
+          >
+            Keep my current photo
+          </button>
+        </div>
       )}
     </div>
   );
