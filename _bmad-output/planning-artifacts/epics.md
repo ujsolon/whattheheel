@@ -274,7 +274,7 @@ So that I can purchase it directly.
 **When** rendered
 **Then** the Buy Now button is hidden rather than showing a broken link
 
-**And** no new backend work is needed — UI-only, reusing existing trend data
+**And** no new API route, collection, service, or external dependency is needed — this reuses the existing `TREND.buyUrl` seed field. *(Revised 2026-08-18 after the Story 2.5 code review. The original wording said "UI-only", but the implementation also hardened `buyUrl` validation in `lib/data/trends.ts` — appropriate for a value that becomes a live outbound `href`, and authorized by Story 2.5's own AC3/AC6. An invalid value now costs the trend its Buy Now link only; it never removes the shoe itself.)*
 
 ### Story 2.6: VTO Result History
 

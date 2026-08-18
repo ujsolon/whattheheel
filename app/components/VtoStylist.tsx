@@ -67,6 +67,11 @@ function usePrefersReducedMotion(): boolean {
 
 export function VtoStylist({ initialTrend, initialGender, trends, initialProfile }: VtoStylistProps) {
   const [selectedTrend, setSelectedTrend] = useState<Trend | undefined>(initialTrend);
+  // The trend that produced the result currently on screen. Frozen at trigger
+  // time so the result image, its alt text, and the Buy Now destination always
+  // describe the shoe that was actually generated — never whatever is selected
+  // in the picker now (which stays live and can change underneath).
+  const [resultTrend, setResultTrend] = useState<Trend | undefined>(undefined);
   const [gender, setGender] = useState<"female" | "male" | null>(initialGender);
   const [profile, setProfile] = useState<ProfileSummary>(initialProfile);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -193,8 +198,24 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
     void poll(taskId, session);
   }
 
+  // Selecting a different shoe invalidates any result or error on screen: that
+  // output belongs to the previous trend. Reset rather than leave a stale image
+  // paired with a new trend's Buy Now link.
+  function selectTrend(next: Trend) {
+    setSelectedTrend(next);
+    if (phase === "idle") return;
+    pollSessionRef.current += 1;
+    clearTimers();
+    activeTaskIdRef.current = undefined;
+    setResultUrl(undefined);
+    setResultTrend(undefined);
+    setErrorMessage(undefined);
+    setPhase("idle");
+  }
+
   async function trigger() {
     if (!selectedTrend || !gender) return;
+    setResultTrend(selectedTrend);
     setPhase("pending");
     setStatusIndex(0);
     setShowLongWait(false);
@@ -264,7 +285,7 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
               trend={trend}
               compact
               selected={selectedTrend?.id === trend.id}
-              onSelect={setSelectedTrend}
+              onSelect={selectTrend}
             />
           ))}
         </section>
@@ -328,24 +349,30 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
         </div>
       )}
 
-      {phase === "success" && resultUrl && selectedTrend && (
+      {phase === "success" && resultUrl && resultTrend && (
         <div className="flex flex-col gap-4">
           <div className="border-[3px] border-lime">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={resultUrl}
-              alt={`Your AI try-on result: ${selectedTrend.label}`}
+              alt={`Your AI try-on result: ${resultTrend.label}`}
               className="w-full object-contain"
             />
           </div>
-          {selectedTrend.buyUrl && (
+          {resultTrend.buyUrl && (
             <a
-              href={selectedTrend.buyUrl}
+              href={resultTrend.buyUrl}
               target="_blank"
+              // `target="_blank"` already implies noopener in current browsers;
+              // kept because EXPERIENCE.md specifies it explicitly. referrerPolicy
+              // is the deliberate middle ground: retailers still see they were
+              // referred (preserving future affiliate attribution) but not the
+              // full URL the user came from.
               rel="noopener"
+              referrerPolicy="strict-origin-when-cross-origin"
               className="flex min-h-11 w-full items-center justify-center border-[3px] border-ink bg-lime px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.05em] text-ink shadow-[5px_5px_0_var(--color-pink)] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
             >
-              Heel Yes — Buy Now →
+              Heel Yes — Buy Now →<span className="sr-only"> (opens in a new tab)</span>
             </a>
           )}
         </div>

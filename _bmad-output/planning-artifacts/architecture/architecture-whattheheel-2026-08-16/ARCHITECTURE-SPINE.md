@@ -203,7 +203,7 @@ erDiagram
 | FR-02 Anonymous Preview | `app/components/OverlayCanvas.tsx` (Client Component) | AD-1, AD-3 (never touches server VTO path) |
 | FR-03 Registration/Profile | `app/api/auth/*`, `app/api/upload/route.ts`, `lib/data/users.ts`, `lib/data/userProfiles.ts` | AD-4, AD-5, AD-7 |
 | FR-04 AI VTO Integration | `app/api/vto-tasks/*`, `lib/services/vtoTask.ts`, `lib/external/youcam.ts` | AD-1, AD-2, AD-3 |
-| FR-05 Retail Integration | `TREND.buyUrl` field (see Structural Seed ER diagram), feed/detail components | Consistency Conventions (data & formats) |
+| FR-05 Retail Integration | `TREND.buyUrl` field (see Structural Seed ER diagram), validated in `lib/data/trends.ts`, rendered **only** on the VTO Result surface (`VtoStylist.tsx`) — not the feed, preview, or history (corrected 2026-08-18: the original "feed/detail components" predated EXPERIENCE.md scoping Buy Now to the result screen, which Story 2.5 implemented) | Consistency Conventions (data & formats) |
 | FR-06 VTO Failure Handling | `lib/services/vtoTask.ts` error map, stylist result component | AD-6 |
 | VTO Result History (Story 2.6, no PRD FR) | `lib/services/vtoTask.ts` result-copy step, `app/profile/page.tsx` history grid | AD-8 |
 

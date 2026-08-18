@@ -113,15 +113,99 @@ describe("VtoStylist", () => {
       );
 
     render(<VtoStylist initialTrend={retailTrend} initialGender="female" trends={[retailTrend]} initialProfile={profile} />);
-    expect(screen.queryByRole("link", { name: "Heel Yes — Buy Now →" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /buy now/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
-    const link = await screen.findByRole("link", { name: "Heel Yes — Buy Now →" });
+    // Absent while the task is still polling — AC4 names pending explicitly.
+    await screen.findByRole("progressbar");
+    expect(screen.queryByRole("link", { name: /buy now/i })).not.toBeInTheDocument();
 
+    const link = await screen.findByRole("link", { name: /buy now/i });
+
+    // The locked hype string is the visible text; the new-tab hint is
+    // screen-reader-only and appended to the accessible name.
+    expect(link).toHaveTextContent("Heel Yes — Buy Now →");
+    expect(link).toHaveAccessibleName("Heel Yes — Buy Now → (opens in a new tab)");
     expect(link).toHaveAttribute("href", retailTrend.buyUrl);
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener");
-    expect(link).toHaveClass("min-h-11", "w-full", "bg-lime", "border-[3px]", "shadow-[5px_5px_0_var(--color-pink)]");
+    expect(link).toHaveAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+    // AC5 names these tokens specifically, including the ones the original
+    // assertion omitted (border-ink, text-ink, and the focus ring).
+    expect(link).toHaveClass(
+      "min-h-11",
+      "w-full",
+      "bg-lime",
+      "text-ink",
+      "border-[3px]",
+      "border-ink",
+      "shadow-[5px_5px_0_var(--color-pink)]",
+      "text-[11px]",
+      "font-black",
+      "tracking-[0.05em]",
+      "focus-visible:outline-3",
+      "focus-visible:outline-offset-2",
+      "focus-visible:outline-lime",
+    );
+    // {rounded.sm} is 0px project-wide — square corners, no radius utility.
+    expect(link.className).not.toMatch(/\brounded\b/);
+  });
+
+  // All three review layers flagged this: the picker stays live during
+  // success, so without freezing the trend at trigger time the CTA could send
+  // the user to a retailer for a shoe they never generated.
+  it("never lets the Buy Now link drift to a trend that did not produce the result", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ data: { taskId: "task-1", status: "pending" } }))
+      .mockResolvedValue(
+        jsonResponse({ data: { taskId: "task-1", status: "success", resultUrl: "https://cdn.test/result.jpg" } }),
+      );
+    const secondRetailTrend = { ...otherTrend, buyUrl: "https://retailer.example/products/boot" };
+
+    render(
+      <VtoStylist
+        initialTrend={undefined}
+        initialGender="female"
+        trends={[retailTrend, secondRetailTrend]}
+        initialProfile={profile}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: retailTrend.label }));
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("link", { name: /buy now/i });
+
+    // Switch to a different shoe while the first shoe's result is on screen.
+    fireEvent.click(screen.getByRole("button", { name: secondRetailTrend.label }));
+
+    // The stale result is cleared rather than being re-labelled and re-linked.
+    expect(screen.queryByRole("link", { name: /buy now/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /your ai try-on result/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try it on/i })).toBeEnabled();
+  });
+
+  it("does not let a mid-poll trend switch repoint the result of the in-flight task", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      jsonResponse({ data: { taskId: "task-1", status: "pending" } }),
+    );
+    const secondRetailTrend = { ...otherTrend, buyUrl: "https://retailer.example/products/boot" };
+
+    render(
+      <VtoStylist
+        initialTrend={undefined}
+        initialGender="female"
+        trends={[retailTrend, secondRetailTrend]}
+        initialProfile={profile}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: retailTrend.label }));
+    fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
+    await screen.findByRole("progressbar");
+
+    fireEvent.click(screen.getByRole("button", { name: secondRetailTrend.label }));
+
+    // Polling for the abandoned task stops; the user is back at the trigger.
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try it on/i })).toBeEnabled();
   });
 
   it("hides Buy Now after success when the selected trend has no retail URL", async () => {
@@ -149,7 +233,7 @@ describe("VtoStylist", () => {
     fireEvent.click(screen.getByRole("button", { name: retailTrend.label }));
     fireEvent.click(screen.getByRole("button", { name: /try it on/i }));
 
-    expect(await screen.findByRole("link", { name: "Heel Yes — Buy Now →" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: /buy now/i })).toHaveAttribute(
       "href",
       retailTrend.buyUrl,
     );
