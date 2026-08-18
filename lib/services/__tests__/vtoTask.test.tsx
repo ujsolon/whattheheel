@@ -469,6 +469,7 @@ describe("getVtoHistory", () => {
         trendLabel: "Chunky Platform Loafer",
         resultUrl: "https://signed.test/folder/result-id",
         createdAt: "2026-01-01T00:00:00.000Z",
+        buyUrl: null,
       },
     ]);
   });
@@ -479,6 +480,22 @@ describe("getVtoHistory", () => {
     const result = await getVtoHistory();
     expect(result).toHaveLength(1);
     expect(result[0].taskId).toBe("task-1");
+  });
+
+  // Story 2.8: the Trend is already resolved here, so projecting buyUrl costs
+  // nothing and removes the need to re-spend a generation to find the product.
+  it("projects the trend's retail URL onto history items", async () => {
+    jest.mocked(getTrendById).mockReturnValue({ ...trend, buyUrl: "https://retailer.example/p/loafer" });
+    jest.mocked(findSuccessfulTasksByUser).mockResolvedValue([successfulTask]);
+    const [first] = await getVtoHistory();
+    expect(first.buyUrl).toBe("https://retailer.example/p/loafer");
+  });
+
+  it("carries a null retail URL through rather than omitting the field", async () => {
+    jest.mocked(getTrendById).mockReturnValue({ ...trend, buyUrl: null });
+    jest.mocked(findSuccessfulTasksByUser).mockResolvedValue([successfulTask]);
+    const [first] = await getVtoHistory();
+    expect(first.buyUrl).toBeNull();
   });
 
   it("filters out a task whose trend can no longer be resolved", async () => {

@@ -49,7 +49,7 @@ describe("ProfilePage authenticated continuation", () => {
 
   it("shows a Past Try-Ons history section when the user has successful VTO results", async () => {
     jest.mocked(getVtoHistory).mockResolvedValue([
-      { taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-01T00:00:00.000Z" },
+      { taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-01T00:00:00.000Z", buyUrl: null },
     ]);
     const element = await ProfilePage({ searchParams: Promise.resolve({}) } as never);
     render(element);

@@ -11,8 +11,8 @@ describe("VtoHistoryGrid", () => {
     render(
       <VtoHistoryGrid
         items={[
-          { taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z" },
-          { taskId: "task-2", trendLabel: "Classic Stiletto", resultUrl: "https://cdn.test/two.jpg", createdAt: "2026-01-01T00:00:00.000Z" },
+          { taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z", buyUrl: null },
+          { taskId: "task-2", trendLabel: "Classic Stiletto", resultUrl: "https://cdn.test/two.jpg", createdAt: "2026-01-01T00:00:00.000Z", buyUrl: null },
         ]}
       />,
     );
@@ -28,7 +28,7 @@ describe("VtoHistoryGrid", () => {
   it("opens the full-image viewer for a tile on click (Story 2.7 — amends Story 2.6's view-only AC4)", () => {
     render(
       <VtoHistoryGrid
-        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z" }]}
+        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z", buyUrl: null }]}
       />,
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -39,7 +39,7 @@ describe("VtoHistoryGrid", () => {
   it("returns focus to the originating tile when the viewer closes", () => {
     render(
       <VtoHistoryGrid
-        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z" }]}
+        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z", buyUrl: null }]}
       />,
     );
     const tile = screen.getByRole("button", { name: /Chunky Platform Loafer/i });
@@ -51,7 +51,7 @@ describe("VtoHistoryGrid", () => {
   it("exposes the section title as a real heading for screen-reader navigation", () => {
     render(
       <VtoHistoryGrid
-        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z" }]}
+        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/one.jpg", createdAt: "2026-01-02T00:00:00.000Z", buyUrl: null }]}
       />,
     );
     expect(screen.getByRole("heading", { name: "Past Try-Ons" })).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe("VtoHistoryGrid", () => {
   it("replaces a tile with a fallback placeholder when its image fails to load, without crashing", () => {
     render(
       <VtoHistoryGrid
-        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/expired.jpg", createdAt: "2026-01-02T00:00:00.000Z" }]}
+        items={[{ taskId: "task-1", trendLabel: "Chunky Platform Loafer", resultUrl: "https://cdn.test/expired.jpg", createdAt: "2026-01-02T00:00:00.000Z", buyUrl: null }]}
       />,
     );
     fireEvent.error(screen.getByAltText("Your past try-on: Chunky Platform Loafer"));

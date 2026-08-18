@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import { BuyNowLink } from "@/app/components/BuyNowLink";
 import type { VtoHistoryItem } from "@/lib/services/vtoTask";
 
 interface VtoResultViewerProps {
@@ -191,6 +192,12 @@ export function VtoResultViewer({ item, onClose }: VtoResultViewerProps) {
           />
         )}
       </div>
+
+      {item.buyUrl && (
+        <div onClick={stopPropagation} className="w-full max-w-sm">
+          <BuyNowLink buyUrl={item.buyUrl} label={item.trendLabel} />
+        </div>
+      )}
 
       <div onClick={stopPropagation} className="flex flex-col items-center gap-1 text-white">
         <label htmlFor="vto-zoom" className="text-xs font-bold">

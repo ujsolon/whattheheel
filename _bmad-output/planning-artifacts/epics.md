@@ -264,7 +264,7 @@ So that I can purchase it directly.
 
 **Given** a successful VTO result is displayed
 **When** rendered
-**Then** a "Buy Now" link appears using the trend's `buyUrl` field (already present from Story 1.2)
+**Then** a "Buy Now" link appears using the trend's `buyUrl` field (already present from Story 1.2) *(Story 2.8 extends this: the same CTA also appears on Feed cards and in the Past Try-Ons viewer, so reaching a retailer never requires spending a YouCam generation.)*
 
 **Given** the buyUrl
 **When** clicked

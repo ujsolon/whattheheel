@@ -6,7 +6,10 @@ const item = {
   trendLabel: "Chunky Platform Loafer",
   resultUrl: "https://cdn.test/result.jpg",
   createdAt: "2026-01-01T00:00:00.000Z",
+  buyUrl: null,
 };
+
+const retailItem = { ...item, buyUrl: "https://retailer.example/products/loafer" };
 
 const ORIGINAL_SET_CAPTURE = HTMLElement.prototype.setPointerCapture;
 const ORIGINAL_RELEASE_CAPTURE = HTMLElement.prototype.releasePointerCapture;
@@ -232,6 +235,30 @@ describe("VtoResultViewer", () => {
 
     fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
 
+    expect(screen.getByRole("button", { name: "Zoom in" })).toHaveFocus();
+  });
+
+  // Story 2.8: reaching a product page must never require re-spending a
+  // YouCam generation, so history surfaces the same locked CTA.
+  it("shows the Buy Now CTA for a past try-on whose trend has a retail URL", () => {
+    render(<VtoResultViewer item={retailItem} onClose={jest.fn()} />);
+    const link = screen.getByRole("link", { name: /buy now/i });
+    expect(link).toHaveAttribute("href", retailItem.buyUrl);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener");
+    expect(link).toHaveAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+    expect(link).toHaveTextContent("Heel Yes — Buy Now →");
+  });
+
+  it("renders no CTA and no placeholder when the past try-on has no retail URL", () => {
+    render(<VtoResultViewer item={item} onClose={jest.fn()} />);
+    expect(screen.queryByRole("link", { name: /buy now/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps the Buy Now CTA inside the focus trap", () => {
+    render(<VtoResultViewer item={retailItem} onClose={jest.fn()} />);
+    screen.getByRole("button", { name: "Close" }).focus();
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
     expect(screen.getByRole("button", { name: "Zoom in" })).toHaveFocus();
   });
 });

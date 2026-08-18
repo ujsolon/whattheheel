@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { BuyNowLink } from "@/app/components/BuyNowLink";
 import { TrendCard } from "@/app/components/TrendCard";
 import { SelfieUploadForm } from "@/app/components/SelfieUploadForm";
 import type { Trend } from "@/lib/data/trends";
@@ -359,22 +360,7 @@ export function VtoStylist({ initialTrend, initialGender, trends, initialProfile
               className="w-full object-contain"
             />
           </div>
-          {resultTrend.buyUrl && (
-            <a
-              href={resultTrend.buyUrl}
-              target="_blank"
-              // `target="_blank"` already implies noopener in current browsers;
-              // kept because EXPERIENCE.md specifies it explicitly. referrerPolicy
-              // is the deliberate middle ground: retailers still see they were
-              // referred (preserving future affiliate attribution) but not the
-              // full URL the user came from.
-              rel="noopener"
-              referrerPolicy="strict-origin-when-cross-origin"
-              className="flex min-h-11 w-full items-center justify-center border-[3px] border-ink bg-lime px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.05em] text-ink shadow-[5px_5px_0_var(--color-pink)] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime"
-            >
-              Heel Yes — Buy Now →<span className="sr-only"> (opens in a new tab)</span>
-            </a>
-          )}
+          {resultTrend.buyUrl && <BuyNowLink buyUrl={resultTrend.buyUrl} />}
         </div>
       )}
 

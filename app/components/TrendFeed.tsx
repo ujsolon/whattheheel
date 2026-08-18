@@ -18,7 +18,7 @@ export function TrendFeed({ trends }: TrendFeedProps) {
   return (
     <section aria-label="Trending shoes" className="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-4">
       {trends.map((trend, index) => (
-        <TrendCard key={trend.id} trend={trend} priority={index < 4} />
+        <TrendCard key={trend.id} trend={trend} priority={index < 4} showBuyLink />
       ))}
     </section>
   );

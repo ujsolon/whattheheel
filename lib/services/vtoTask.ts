@@ -267,6 +267,9 @@ export interface VtoHistoryItem {
   trendLabel: string;
   resultUrl: string;
   createdAt: string;
+  // Projected from the Trend already resolved below. Reaching a product page
+  // must never require re-spending a YouCam generation (Story 2.8).
+  buyUrl: string | null;
 }
 
 export async function getVtoHistory(): Promise<VtoHistoryItem[]> {
@@ -284,6 +287,7 @@ export async function getVtoHistory(): Promise<VtoHistoryItem[]> {
       trendLabel: trend.label,
       resultUrl: getPrivateSelfieUrl(task.resultPublicId, task.resultFormat, Date.now(), RESULT_URL_LIFETIME_SECONDS),
       createdAt: task.createdAt.toISOString(),
+      buyUrl: trend.buyUrl,
     });
   }
   return items;

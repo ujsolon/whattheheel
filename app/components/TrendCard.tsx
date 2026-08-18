@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { BuyNowLink } from "@/app/components/BuyNowLink";
 import type { Trend } from "@/lib/data/trends";
 
 interface TrendCardProps {
@@ -10,6 +11,12 @@ interface TrendCardProps {
   compact?: boolean;
   selected?: boolean;
   onSelect?: (trend: Trend) => void;
+  /**
+   * Opt-in. The Feed enables it so a shopper can reach a retailer without
+   * spending a generation; the AI Stylist picker deliberately does not, since a
+   * competing outbound link mid-flow would derail the trigger (Story 2.8, AC5).
+   */
+  showBuyLink?: boolean;
 }
 
 const defaultHrefBuilder = (trend: Trend) => `/preview?trend=${encodeURIComponent(trend.id)}`;
@@ -21,6 +28,7 @@ export function TrendCard({
   compact = false,
   selected = false,
   onSelect,
+  showBuyLink = false,
 }: TrendCardProps) {
   const className = `relative flex h-full w-full flex-col border-[3px] border-ink bg-white text-left text-ink shadow-[4px_4px_0_var(--color-ink)] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-lime ${
     selected ? "outline outline-4 outline-lime shadow-[4px_4px_0_var(--color-lime)]" : ""
@@ -55,6 +63,27 @@ export function TrendCard({
       <button type="button" onClick={() => onSelect(trend)} aria-label={trend.label} aria-pressed={selected} className={className}>
         {content}
       </button>
+    );
+  }
+
+  // A Buy Now action cannot live inside the card's primary target: nesting an
+  // <a> inside an <a> (or a <button>) is invalid HTML and browsers re-parent
+  // it. So when the card carries one, the chrome moves to a plain container and
+  // the two actions become siblings (Story 2.8, AC4).
+  if (showBuyLink && trend.buyUrl) {
+    return (
+      <div className={`${className} overflow-hidden`}>
+        <Link
+          href={hrefBuilder(trend)}
+          aria-label={trend.label}
+          className="flex flex-1 flex-col focus-visible:outline focus-visible:outline-3 focus-visible:-outline-offset-4 focus-visible:outline-lime"
+        >
+          {content}
+        </Link>
+        <div className="border-t-[3px] border-ink">
+          <BuyNowLink buyUrl={trend.buyUrl} label={trend.label} />
+        </div>
+      </div>
     );
   }
 
