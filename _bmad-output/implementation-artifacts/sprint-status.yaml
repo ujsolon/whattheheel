@@ -29,7 +29,7 @@ development_status:
   1-1-project-scaffolding-foundation: done
   1-2-curated-trendsetter-feed-display: done
   1-3-anonymous-manual-overlay-preview: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
   epic-2: done
   2-1-user-registration-login: done
   2-2-selfie-capture-profile-storage: done
@@ -39,4 +39,38 @@ development_status:
   2-4-vto-failure-handling: done
   2-5-retail-buy-now-links: done
   2-8-buy-now-without-generation: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
+
+action_items:
+  - epic: "1-2"
+    action: "Sequence stories; no parallel sessions on a shared tree (branch isolation if unavoidable)"
+    owner: "ujsolon"
+    status: open
+  - epic: "1-2"
+    action: "Fix review defects in-story; defer only genuinely out-of-scope work"
+    owner: "ujsolon + Amelia"
+    status: open
+  - epic: "1-2"
+    action: "Hand large commits and all prod deploys to ujsolon; agent prepares and reports"
+    owner: "Amelia"
+    status: open
+  - epic: "1-2"
+    action: "For feel-based UX decisions, build the smallest version and try it firsthand"
+    owner: "Sally + ujsolon"
+    status: open
+  - epic: "1-2"
+    action: "Add a review pass on test quality: does each assertion fail if behaviour breaks?"
+    owner: "Amelia"
+    status: open
+  - epic: "1-2"
+    action: "Never accept baseline_commit NO_VCS in a git repo"
+    owner: "Amelia"
+    status: open
+  - epic: "1-2"
+    action: "Amend the AC in the same change that deviates from it"
+    owner: "Amelia"
+    status: open
+  - epic: "1-2"
+    action: "Run a retrospective after each epic"
+    owner: "ujsolon"
+    status: open

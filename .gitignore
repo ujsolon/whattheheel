@@ -43,3 +43,6 @@ atlas-credentials.env*
 next-env.d.ts
 
 .vercel
+
+# swc build cache (next/jest transforms)
+/.swc
