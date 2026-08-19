@@ -4,7 +4,7 @@ baseline_commit: 8835ac1
 
 # Story 2.8: Buy Now Without Spending Credits
 
-Status: review
+Status: done
 
 <!-- Added 2026-08-19, post-launch. Not in the original PRD FR list. Raised by the product owner immediately after Story 2.5's retail URLs went in: the Buy Now link was reachable ONLY through a successful VTO generation, so every path to a purchase link cost 2 YouCam units against a 1,000-unit allotment. This story amends Story 2.5's AC4 and extends 2.6/2.7 and the Feed. -->
 

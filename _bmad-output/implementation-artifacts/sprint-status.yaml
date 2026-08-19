@@ -18,19 +18,19 @@
 # - Development should move a story through review before it is done.
 
 generated: 2026-08-17
-last_updated: 2026-08-18
+last_updated: 2026-08-19
 project: whattheheel
 project_key: NOKEY
 tracking_system: file-system
 story_location: C:\Users\yujey\Documents\whattheheel\_bmad-output\implementation-artifacts
 
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-project-scaffolding-foundation: done
   1-2-curated-trendsetter-feed-display: done
   1-3-anonymous-manual-overlay-preview: done
   epic-1-retrospective: optional
-  epic-2: in-progress
+  epic-2: done
   2-1-user-registration-login: done
   2-2-selfie-capture-profile-storage: done
   2-3-ai-virtual-try-on-generation: done
@@ -38,5 +38,5 @@ development_status:
   2-7-vto-history-full-image-viewer: done
   2-4-vto-failure-handling: done
   2-5-retail-buy-now-links: done
-  2-8-buy-now-without-generation: review
+  2-8-buy-now-without-generation: done
   epic-2-retrospective: optional
