@@ -14,7 +14,7 @@
 
 - **Loading skeleton drifts from card geometry and the design token** (`app/loading.tsx`) — deferred because `loading.tsx` is deliberately unreachable scaffolding (above); polishing it now is premature, but it **must be fixed before Story 1.3 makes the boundary reachable**. Four mismatches: 8 skeletons vs 3 seed entries; `aspect-[4/5]` vs the real card's `aspect-square` image plus `min-h-16` label bar; `repeating-linear-gradient(135deg,#151515…#242424)` dark stripes vs DESIGN.md's `trend-card-loading` light shimmer (`110deg, #E7E7E7 0 10px, #D2D2D2 10px 20px`); and no `AppNavigation`/`Marquee`, so nav and ticker would pop in on transition. `#242424` appears nowhere in the DESIGN.md palette.
 
-- **`lg:sticky` leaves `bottom-0` unreset** (`app/components/AppNavigation.tsx:7`) — cosmetic robustness. The class list is `fixed inset-x-0 bottom-0 … lg:sticky lg:top-0`; the responsive variants override `position` and border sides but never reset `bottom`. A sticky box with both `top` and `bottom` set is a fragile construction; `lg:bottom-auto` should be explicit. Verified rendering acceptably at 1440×1000 today, so no user impact currently. *(Note: current `AppNavigation.tsx` now shows `lg:bottom-auto` explicitly present — appears already resolved by a later change; re-verify before acting.)*
+- ~~**`lg:sticky` leaves `bottom-0` unreset**~~ (`app/components/AppNavigation.tsx:7`) — **RESOLVED:** `lg:bottom-auto` is present in the current class list, so the desktop sticky layout no longer retains the mobile bottom constraint.
 
 ## Deferred from: Story 2.2 planning (2026-08-17)
 
@@ -34,7 +34,7 @@
 - **Unrelated `AppNavigation` layout changes bundled into the 1.3 diff** (`app/components/AppNavigation.tsx`) — `overflow-hidden`, `min-w-0`, padding/leading tweaks with no stated connection to the overlay-preview story. Tests were updated to match (so likely intentional), but the reason isn't documented anywhere — informational only, no user impact found.
 ## Deferred from: code review of 2-3-ai-virtual-try-on-generation (2026-08-17)
 
-- Orphan-task handling after YouCam accepts a billable task but Mongo persistence fails. Accepted for hackathon scope due to low expected volume, disproportionate reconciliation complexity, and limited time before submission. A future production-hardening pass should introduce durable initiation/idempotency or reconciliation.
+- **Orphan-task handling after YouCam accepts a billable task but Mongo persistence fails** (`lib/services/vtoTask.ts`). Accepted for hackathon scope due to low expected volume, disproportionate reconciliation complexity, and limited time before submission. A future production-hardening pass should introduce durable initiation/idempotency or reconciliation.
 
 ## Deferred from: code review of 2-6-vto-result-history (2026-08-18)
 
@@ -50,7 +50,7 @@
 
 ## Deferred from: code review of 2-5-retail-buy-now-links (2026-08-18)
 
-- **FR5 ships with zero live retail links — every `buyUrl` in `public/trends.json` is `null`** (`public/trends.json`) — the Buy Now CTA is fully implemented and tested but cannot render for any real user, so the epic's headline retail capability is demonstrable only in fixtures. Story 2.5 explicitly authorized shipping this way rather than fabricating retailer destinations (Task 4), which is the right call — but the epic would otherwise close with nothing carrying the remainder. **Action:** when the product owner supplies verified product URLs, add them to the matching `public/trends.json` entries and manually click through each one before demoing. No code change required; the conditional render already handles both states.
+- ~~**FR5 ships with zero live retail links — every `buyUrl` in `public/trends.json` is `null`**~~ (`public/trends.json`) — **RESOLVED 2026-08-19:** all five curated trends now carry absolute HTTPS retailer destinations, and Story 2.8 exposes the shared Buy Now action without requiring another generation. Retail-link maintenance remains covered by production-readiness Tier 2.3.
 
 - **`href={selectedTrend.buyUrl}` has no render-time validation** (`app/components/VtoStylist.tsx`) — the anchor trusts the invariant that every `Trend` originates from `getTrends()` (which validates `buyUrl`). That invariant holds at every current call site, and it is enforced nowhere in the type system: `Trend.buyUrl` is a plain `string | null`, not a branded/validated type, and the invariant is undocumented at the point of use. Any future surface that constructs a `Trend` from request data (an admin form, a saved-look feature, a history DTO) would reintroduce `javascript:` at this line with nothing in the way. Revisit if trend data ever becomes user- or API-sourced rather than a committed seed.
 

@@ -74,3 +74,11 @@ action_items:
     action: "Run a retrospective after each epic"
     owner: "ujsolon"
     status: open
+  - epic: "1-2"
+    action: "Add cross-cutting privacy, third-party, metered-cost, and operational-risk checks during epic and story creation"
+    owner: "John + Winston"
+    status: open
+  - epic: "1-2"
+    action: "Before any public launch, convert all Tier-0 production-readiness blockers into an owned production-hardening epic"
+    owner: "ujsolon + John + Winston"
+    status: open
